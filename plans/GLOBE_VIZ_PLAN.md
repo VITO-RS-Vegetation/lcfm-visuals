@@ -42,9 +42,9 @@ map.addSource('blue-marble', {
   type: 'raster',
   tiles: [
     'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer'
-    + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1'
+    + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0'
     + '&LAYERS=0&STYLES=&FORMAT=image/png&TRANSPARENT=false'
-    + '&SRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}',
+    + '&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-4326}',
   ],
   tileSize: 256,
   attribution: '© USGS',
@@ -52,7 +52,9 @@ map.addSource('blue-marble', {
 map.addLayer({ id: 'blue-marble', type: 'raster', source: 'blue-marble' });
 ```
 
-> MapLibre handles reprojection to the globe internally; EPSG:3857 WMS tiles are correct here.
+> Using EPSG:4326 (equirectangular) avoids the strong polar distortion/artefacts that occur with
+> EPSG:3857 (WebMercator). The WMS is queried with WMS 1.3.0 (`CRS=`) and `{bbox-epsg-4326}`
+> (axis order: minLat,minLon,maxLat,maxLon). Confirmed working — see `plans/data_findings.md`.
 
 ---
 
