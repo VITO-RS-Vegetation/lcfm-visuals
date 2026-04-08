@@ -63,8 +63,26 @@ map.addLayer({ id: 'blue-marble', type: 'raster', source: 'blue-marble' });
 **Asset:** `https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/LCM-10_v100_2020_MAP_lat-lon.tif` *(S3/CloudFerro — public HTTPS, HTTP range requests supported)*  
 **Asset (Terrascope):** `https://services.terrascope.be/download/LCFM/products/LCM-10/v100/overviews/LCM-10_v100_2020_MAP_lat-lon.tif` *(online — requires authentication, HTTP 401)*  
 **CRS:** EPSG:4326 | **Size:** 36000 × 14275 px  
-**Bands:** Band 1 = MAP (categorical, paletted), Band 2 = alpha  
-**Attribution:** © VITO 2026. Contains Copernicus Land Monitoring Service & modified Copernicus Sentinel data (2020).
+**Coverage:** 180°W–180°E, 60°S–83°N  
+**Bands:** Band 1 = MAP (uint8, categorical), Band 2 = alpha  
+**No-data value:** 255 (transparent; distinct from class 254 = Unclassifiable)  
+**License:** [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)  
+**Attribution:** © VITO (Copernicus Land Monitoring Service / ESA, 2020). Made with Sentinel-1, Sentinel-2, AgERA5, and WorldDEM-30.
+
+### COG Architecture
+
+The global mosaic COG is built from **2,647 individual 3×3 degree tiles** distributed via the Terrascope STAC collection [`lcfm-lcm-10`](https://stac.terrascope.be/collections/lcfm-lcm-10). Each tile is a single-band uint8 Cloud-Optimized GeoTIFF (~5–32 MB) following the naming convention:
+
+```
+LCFM_LCM-10_V100_2020_{LAT}{LON}_MAP.tif
+```
+
+Example tile URL (authentication required):
+```
+https://services.terrascope.be/download/LCFM/products/LCM-10/v100/tiles_latlon/3deg/S60/W030/2020/LCFM_LCM-10_V100_2020_S60W030_MAP.tif
+```
+
+The native `titiler.terrascope.be` endpoint supports a named `lcfm` colormap for tile previews but requires OIDC authentication. The public `titiler.xyz` instance with the explicit colormap below is used instead for the overview COG.
 
 ### Tiling via titiler
 
@@ -91,6 +109,7 @@ const COLORMAP = encodeURIComponent(JSON.stringify({
   100: [0,   100, 200, 255],   // Permanent water    #0064C8
   110: [240, 240, 240, 255],   // Snow and ice       #F0F0F0
   254: [10,  10,  10,  255],   // Unclassifiable     #0A0A0A
+  // 255 = No-data; handled by the alpha band (band 2), not the colormap.
 }));
 
 map.addSource('lcm10', {
@@ -169,6 +188,7 @@ A fixed HTML/CSS panel (bottom-left) listing the 12 LCM-10 classes with coloured
 | 100 | Permanent water bodies | `#0064C8` |
 | 110 | Snow and ice | `#F0F0F0` |
 | 254 | Unclassifiable | `#0A0A0A` |
+| 255 | No-data | transparent (alpha band) |
 
 ---
 
@@ -216,8 +236,10 @@ A fixed HTML/CSS panel (bottom-left) listing the 12 LCM-10 classes with coloured
 
 | Item | Notes |
 |---|---|
-| titiler rate limits | Public instance may throttle at scale. Self-host if needed. |
+| titiler rate limits | Public instance may throttle at scale. Self-host via Docker if needed. |
 | S3 COG accessibility | `vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com` responds HTTP 200 with `accept-ranges: bytes` — range requests confirmed working. |
-| Terrascope COG (auth) | Endpoint is online (HTTP 401 = requires credentials). Obtain Terrascope login to use it as an alternative. |
+| Terrascope COG (auth) | Endpoint is online (HTTP 401 = requires credentials). Terrascope uses OIDC; obtain login to use it as an alternative. Individual tiles also require auth. |
 | titiler `bidx=1&bidx=2` + colormap | Need to confirm titiler applies colormap to band 1 and uses band 2 as alpha in the same request. May need `&return_mask=true` instead. |
+| No-data value 255 | Per STAC metadata, 255 = no-data. Alpha band (band 2) should already mask these pixels; verify no bleed-through of value 255 as near-white. |
 | Globe projection in MapLibre | Verify no breaking API changes in latest MapLibre 4.x release. |
+| Tile count / coverage | 2,647 tiles cover 60°S–83°N. Polar regions beyond 83°N (Greenland ice cap fringe, High Arctic) and below 60°S (Antarctica) are not included in the dataset. |
