@@ -67,7 +67,7 @@ map.addLayer({ id: 'blue-marble', type: 'raster', source: 'blue-marble' });
 **Bands:** Band 1 = MAP (uint8, categorical), Band 2 = alpha  
 **No-data value:** 255 (transparent; distinct from class 254 = Unclassifiable)  
 **License:** [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)  
-**Attribution:** © VITO (Copernicus Land Monitoring Service / ESA, 2020). Made with Sentinel-1, Sentinel-2, AgERA5, and WorldDEM-30.
+**Attribution:** © VITO 2026. European Union's Copernicus Land Monitoring Service information. [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
 ### COG Architecture
 
@@ -109,19 +109,20 @@ const COLORMAP = encodeURIComponent(JSON.stringify({
   100: [0,   100, 200, 255],   // Permanent water    #0064C8
   110: [240, 240, 240, 255],   // Snow and ice       #F0F0F0
   254: [10,  10,  10,  255],   // Unclassifiable     #0A0A0A
-  // 255 = No-data; handled by the alpha band (band 2), not the colormap.
+  255: [0,   0,   0,   0],     // No-data → transparent (do NOT request bidx=2)
 }));
+// NOTE: bidx=1 only. bidx=1&bidx=2 + colormap → 422 (colormap needs 1 band).
 
 map.addSource('lcm10', {
   type: 'raster',
   tiles: [
-    `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@2x`
+    `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}`
     + `?url=${COG_URL}`
-    + `&bidx=1&bidx=2`       // band 1 = data, band 2 = alpha
+    + `&bidx=1`
     + `&colormap=${COLORMAP}`,
   ],
   tileSize: 512,
-  attribution: '© VITO 2026 / Copernicus',
+  attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
 });
 map.addLayer({
   id: 'lcm10',
@@ -479,3 +480,136 @@ map.on('load', () => {
 ```
 
 > `projection` set in the style spec at construction time — no need to call `setProjection()` on `style.load` if the style object is provided inline.
+
+---
+
+## Implementation Findings (from globe_maplibre.html)
+
+*Appended 2026-04-09 from live testing.*
+
+### Blue Marble: use ArcGIS REST tiles, not WMS
+
+The WMS approach with `{bbox-epsg-4326}` fails with HTTP 400 because **MapLibre does not substitute `{bbox-epsg-4326}`** — only `{bbox-epsg-3857}` is a built-in raster-source template variable. The literal string is forwarded to the WMS server, which rejects it.
+
+**Fix:** use the USGS ArcGIS REST tile endpoint instead:
+
+```ts
+map.addSource('blue-marble', {
+  type: 'raster',
+  tiles: [
+    'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',
+  ],
+  tileSize: 256,
+  attribution: '© USGS',
+});
+```
+
+Note the ArcGIS REST tile URL order is `{z}/{y}/{x}` (row/col), not `{z}/{x}/{y}`.
+
+---
+
+### titiler + colormap: request exactly one band (`bidx=1`), encode no-data in colormap
+
+Combining `bidx=1&bidx=2` with `colormap` causes a **422 Unprocessable Content** error. titiler's `colormap` parameter requires a **single-band input** — it maps each scalar pixel value to an RGBA colour. Requesting two bands produces a 2-channel output that the colormap pipeline cannot process.
+
+**Fix:** request only `bidx=1` and add the no-data value (`255`) as fully transparent in the colormap:
+
+```ts
+const COLORMAP = encodeURIComponent(JSON.stringify({
+  10:  [0,   100,   0, 255],
+  // … other classes …
+  254: [10,  10,  10,  255],
+  255: [0,   0,   0,   0],   // no-data → fully transparent
+}));
+
+const tiles = `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}`
+  + `?url=${COG_URL}&bidx=1&colormap=${COLORMAP}`;
+```
+
+The `@2x` suffix (`/tile@2x`) is optional and can be omitted to simplify the URL.
+
+---
+
+### Uniform globe lighting: omit `light`; set `atmosphere-blend: 0`
+
+Two separate properties cause uneven illumination:
+
+1. **`light: { anchor: 'map', position: [...] }`** — positions a directional sun, darkening the opposite hemisphere. **Fix: omit the `light` property entirely.**
+
+2. **`sky: { 'atmosphere-blend': 1 }`** — even without a directional light, a value > 0 renders a bright atmospheric halo at the globe limb that appears as a sliver of excess brightness (most visible top-left at default zoom/center). **Fix: set `atmosphere-blend: 0`.**
+
+```ts
+style: {
+  version: 8,
+  projection: { type: 'globe' },
+  sky: { 'atmosphere-blend': 0 },  // no halo; omit 'light' entirely
+  sources: {},
+  layers: [],
+}
+```
+
+---
+
+### htmlpreview.github.io: use `setInterval` poll, not `onload`
+
+htmlpreview patches `document.head.appendChild` so that `script.onload` is called **synchronously** before the script content has actually executed. A dynamic `<script>` loader using `js.onload = initMap` therefore calls `initMap()` before `maplibregl` is defined.
+
+**Fix:** poll with `setInterval` until `window.maplibregl` is truthy:
+
+```js
+(function () {
+  var js = document.createElement('script');
+  js.src = 'https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.js';
+  document.head.appendChild(js);
+  var t = setInterval(function () {
+    if (window.maplibregl) { clearInterval(t); initMap(); }
+  }, 50);
+})();
+```
+
+**GitHack** (`raw.githack.com`) serves HTML files as-is without any script interception and is a more reliable preview URL than htmlpreview.
+
+**GitHack caches branch-based URLs.** After a new commit, branch URLs (`.../main/...` or `.../my-branch/...`) may still serve the old file until the cache expires. Always use a **commit-SHA URL** to bypass this:
+
+```
+https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/globe_maplibre.html
+```
+
+Get the SHA with `git rev-parse HEAD`.
+
+---
+
+### Attribution control: compact by default
+
+The default MapLibre attribution bar (bottom-right) shows full text on load. To show only the `ⓘ` icon by default (expands on click), disable the auto-added control and add it manually with `compact: true`:
+
+```ts
+const map = new maplibregl.Map({
+  // …
+  attributionControl: false,  // disable auto-added control
+});
+
+map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+```
+
+Dark-theme CSS overrides for the attribution widget:
+
+```css
+.maplibregl-ctrl-attrib          { background: rgba(0,0,0,0.6) !important; color: #ccc !important; }
+.maplibregl-ctrl-attrib a        { color: #9bd !important; }
+.maplibregl-ctrl-attrib-button   { filter: invert(0.8); }
+```
+
+---
+
+### Legend: eye-icon toggle
+
+A small button (bottom-left) with an SVG eye / eye-off icon controls legend visibility. The legend panel sits immediately to the right (`left: 50px`). Toggling adds/removes a `.hidden` class that fades via `opacity` + `visibility` transition.
+
+```css
+#legend.hidden { opacity: 0; visibility: hidden; }
+```
+
+The toggle swaps between two inline SVG icons (`#eye-open` / `#eye-shut`) on each click.
+
+The **no-data (transparent)** row was removed from the legend — it conveys no colour information and the alpha behaviour is already documented in the plan.
