@@ -86,9 +86,13 @@
       border: 1px solid rgba(255,255,255,0.15);
     }
 
-    /* Attribution bar hidden — attribution is shown in the legend panel */
-    .maplibregl-ctrl-attrib,
-    .maplibregl-ctrl-attrib-button { display: none !important; }
+    /* Attribution — dark theme overrides */
+    .maplibregl-ctrl-attrib {
+      background: rgba(0,0,0,0.6) !important;
+      color: #ccc !important;
+    }
+    .maplibregl-ctrl-attrib a { color: #9bd !important; }
+    .maplibregl-ctrl-attrib-button { filter: invert(0.8); }
   </style>
 </head>
 <body>
@@ -198,6 +202,7 @@
     // ── Map initialisation ──
     const map = new maplibregl.Map({
       container: 'map',
+      attributionControl: false,   // added manually below with compact:true
       style: {
         version: 8,
         projection: { type: 'globe' },   // MapLibre GL JS v5+
@@ -221,6 +226,7 @@
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
     map.addControl(new maplibregl.GlobeControl(), 'top-right');
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
     map.on('load', () => {
       // ── Layer 1: Blue Marble (background) ──
