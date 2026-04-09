@@ -197,23 +197,14 @@
     'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer';
 
   // ── 3. Map init ───────────────────────────────────────────────────────────────
-  // Projection is placed in the style JSON itself — calling setProjection()
-  // inside the load handler triggers an async style update that silently
-  // wipes layers added in the same handler (no error thrown, just blank map).
+  // A real external style is required for setProjection({type:'globe'}) to work.
+  // With a blank inline style the projection update is silently dropped.
+  // CartoDB dark-matter is used as base; our raster layers cover it completely.
   var map;
   try {
     map = new maplibregl.Map({
       container: 'map',
-      style: {
-        version: 8,
-        projection: { type: 'globe' },   // ← set here, not via setProjection()
-        sources: {},
-        layers: [{
-          id:   'background',
-          type: 'background',
-          paint: { 'background-color': '#08101f' },
-        }],
-      },
+      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
       center:  [10, 20],
       zoom:    1.5,
       maxZoom: 10,
@@ -234,8 +225,13 @@
   });
 
   // ── 4. Layers ─────────────────────────────────────────────────────────────────
-  map.on('load', function () {
-    setStatus('Map loaded — adding layers…');
+  // Use once() — setProjection may fire a style reload; on() would double-add layers
+  map.once('load', function () {
+    setStatus('Map loaded — setting globe…');
+
+    // Globe projection: works with external styles per anymap-ts reference.
+    // Must be called in load handler, not before.
+    map.setProjection({ type: 'globe' });
 
     // Sky atmosphere
     try {
@@ -250,7 +246,10 @@
       });
     } catch (_) {}
 
+    setStatus('Adding layers…');
+
     // Layer 1 — Blue Marble (USGS WMS, EPSG:3857)
+    // Placed on top of CartoDB base — covers it completely at full opacity
     map.addSource('blue-marble', {
       type: 'raster',
       tiles: [
