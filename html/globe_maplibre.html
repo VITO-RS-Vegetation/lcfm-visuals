@@ -58,24 +58,26 @@
     #toggle-lcm:hover { background: rgba(60,60,60,0.95); color: #fff; }
     #toggle-lcm.off   { color: #777; border-color: rgba(255,255,255,0.08); }
 
-    /* ── Error / status bar (hidden until needed) ────────────── */
+    /* ── Status bar — always visible for diagnostics ────────── */
     #status {
       position: absolute;
       top: 90px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(180, 30, 30, 0.92);
-      color: #fff;
+      color: #aaa;
       font-family: monospace;
       font-size: 11px;
-      padding: 5px 14px;
+      padding: 4px 12px;
       border-radius: 8px;
       max-width: 90vw;
       word-break: break-all;
       text-align: center;
-      display: none;
+      background: rgba(0,0,0,0.55);
     }
-    #status.show { display: block; }
+    #status.error {
+      background: rgba(160, 30, 30, 0.92);
+      color: #fff;
+    }
 
     /* ── Legend ──────────────────────────────────────────────── */
     #legend {
@@ -129,7 +131,7 @@
 <div id="ui">
   <div id="title">LCM-10 Land Cover Map 2020 — Interactive Globe</div>
   <button id="toggle-lcm">Hide LCM-10</button>
-  <div id="status"></div>
+  <div id="status">Loading…</div>
 </div>
 
 <div id="legend">
@@ -158,24 +160,24 @@
 (function () {
   'use strict';
 
-  const statusEl = document.getElementById('status');
-  function showError(msg) {
+  var statusEl = document.getElementById('status');
+  function setStatus(msg, isError) {
     statusEl.textContent = msg;
-    statusEl.classList.add('show');
-    console.error('[lcm-globe]', msg);
+    statusEl.className = isError ? 'error' : '';
   }
 
-  // ── 1. Verify MapLibre loaded ───────────────────────────────────────────────
+  // ── 1. CDN check ─────────────────────────────────────────────────────────────
   if (typeof maplibregl === 'undefined') {
-    showError('MapLibre GL JS failed to load from CDN (check network / ad-blocker)');
+    setStatus('MapLibre GL JS failed to load from CDN', true);
     return;
   }
+  setStatus('MapLibre v' + maplibregl.version + ' — creating map…');
 
-  // ── 2. COG tile URL (band 1 only; 255 = no-data → transparent via colormap) ─
-  const COG_URL = encodeURIComponent(
+  // ── 2. Data URLs ─────────────────────────────────────────────────────────────
+  var COG_URL = encodeURIComponent(
     'https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/LCM-10_v100_2020_MAP_lat-lon.tif'
   );
-  const COLORMAP = encodeURIComponent(JSON.stringify({
+  var COLORMAP = encodeURIComponent(JSON.stringify({
      10: [0,   100, 0,   255],
      20: [255, 187, 34,  255],
      30: [255, 255, 76,  255],
@@ -188,22 +190,26 @@
     100: [0,   100, 200, 255],
     110: [240, 240, 240, 255],
     254: [10,  10,  10,  255],
-    255: [0,   0,   0,   0],   // no-data → transparent
+    255: [0,   0,   0,   0],
   }));
 
-  const WMS_BASE =
+  var WMS_BASE =
     'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer';
 
-  // ── 3. Map — blank style with only a background layer; no glyphs needed ────
-  let map;
+  // ── 3. Map init ───────────────────────────────────────────────────────────────
+  // Projection is placed in the style JSON itself — calling setProjection()
+  // inside the load handler triggers an async style update that silently
+  // wipes layers added in the same handler (no error thrown, just blank map).
+  var map;
   try {
     map = new maplibregl.Map({
       container: 'map',
       style: {
         version: 8,
+        projection: { type: 'globe' },   // ← set here, not via setProjection()
         sources: {},
         layers: [{
-          id: 'background',
+          id:   'background',
           type: 'background',
           paint: { 'background-color': '#08101f' },
         }],
@@ -211,31 +217,27 @@
       center:  [10, 20],
       zoom:    1.5,
       maxZoom: 10,
-      // NOTE: projection is set via map.setProjection() in the load handler
-      // (constructor string-form is silently ignored in some 4.x builds)
     });
   } catch (err) {
-    showError('Map constructor failed: ' + err.message);
+    setStatus('Map constructor failed: ' + err.message, true);
     return;
   }
 
   map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-  // Surface any map-level errors (tile errors are expected; don't flood UI)
   map.on('error', function (e) {
-    console.error('[MapLibre error]', e);
+    console.error('[MapLibre]', e);
+    // Only show non-tile errors (tile 404s are noisy but expected)
     if (!e.sourceId) {
-      showError('Map error: ' + (e.error && e.error.message ? e.error.message : String(e)));
+      setStatus('Map error: ' + (e.error ? e.error.message : e), true);
     }
   });
 
-  // ── 4. Add layers once map is ready ────────────────────────────────────────
+  // ── 4. Layers ─────────────────────────────────────────────────────────────────
   map.on('load', function () {
+    setStatus('Map loaded — adding layers…');
 
-    // Globe projection — must be set via setProjection() in load, not constructor
-    map.setProjection({ type: 'globe' });
-
-    // Atmosphere (plain numbers only — no expressions)
+    // Sky atmosphere
     try {
       map.setSky({
         'sky-color':         '#000818',
@@ -249,7 +251,6 @@
     } catch (_) {}
 
     // Layer 1 — Blue Marble (USGS WMS, EPSG:3857)
-    // {bbox-epsg-4326} is NOT substituted by MapLibre; use {bbox-epsg-3857} instead
     map.addSource('blue-marble', {
       type: 'raster',
       tiles: [
@@ -263,7 +264,7 @@
     });
     map.addLayer({ id: 'blue-marble', type: 'raster', source: 'blue-marble' });
 
-    // Layer 2 — LCM-10 MAP via titiler (band 1 + colormap)
+    // Layer 2 — LCM-10 via titiler (band 1 + colormap, 255→transparent)
     map.addSource('lcm10', {
       type: 'raster',
       tiles: [
@@ -276,17 +277,19 @@
       attribution: '© VITO 2020 / Copernicus',
     });
     map.addLayer({
-      id:   'lcm10',
-      type: 'raster',
+      id:     'lcm10',
+      type:   'raster',
       source: 'lcm10',
-      paint: { 'raster-opacity': 1.0 },
+      paint:  { 'raster-opacity': 1.0 },
     });
+
+    map.once('idle', function () { setStatus(''); });
   });
 
-  // ── 5. LCM-10 toggle ───────────────────────────────────────────────────────
+  // ── 5. Toggle ──────────────────────────────────────────────────────────────────
   var lcm10On = true;
   document.getElementById('toggle-lcm').addEventListener('click', function () {
-    if (!map.getLayer('lcm10')) return;   // not loaded yet
+    if (!map.getLayer('lcm10')) return;
     lcm10On = !lcm10On;
     map.setLayoutProperty('lcm10', 'visibility', lcm10On ? 'visible' : 'none');
     this.textContent = lcm10On ? 'Hide LCM-10' : 'Show LCM-10';
