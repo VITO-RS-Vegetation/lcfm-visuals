@@ -208,10 +208,11 @@
           paint: { 'background-color': '#08101f' },
         }],
       },
-      center:     [10, 20],
-      zoom:       1.5,
-      maxZoom:    10,
-      projection: 'globe',       // string form — works in all 4.x versions
+      center:  [10, 20],
+      zoom:    1.5,
+      maxZoom: 10,
+      // NOTE: projection is set via map.setProjection() in the load handler
+      // (constructor string-form is silently ignored in some 4.x builds)
     });
   } catch (err) {
     showError('Map constructor failed: ' + err.message);
@@ -231,6 +232,9 @@
   // ── 4. Add layers once map is ready ────────────────────────────────────────
   map.on('load', function () {
 
+    // Globe projection — must be set via setProjection() in load, not constructor
+    map.setProjection({ type: 'globe' });
+
     // Atmosphere (plain numbers only — no expressions)
     try {
       map.setSky({
@@ -244,14 +248,15 @@
       });
     } catch (_) {}
 
-    // Layer 1 — Blue Marble (USGS WMS, EPSG:4326 bbox)
+    // Layer 1 — Blue Marble (USGS WMS, EPSG:3857)
+    // {bbox-epsg-4326} is NOT substituted by MapLibre; use {bbox-epsg-3857} instead
     map.addSource('blue-marble', {
       type: 'raster',
       tiles: [
         WMS_BASE
         + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0'
         + '&LAYERS=0&STYLES=&FORMAT=image/png&TRANSPARENT=false'
-        + '&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-4326}',
+        + '&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}',
       ],
       tileSize:    256,
       attribution: '© USGS',
