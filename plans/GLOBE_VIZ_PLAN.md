@@ -479,3 +479,57 @@ map.on('load', () => {
 ```
 
 > `projection` set in the style spec at construction time — no need to call `setProjection()` on `style.load` if the style object is provided inline.
+
+---
+
+## Implementation Findings (from globe_maplibre.html)
+
+*Appended 2026-04-09 from live testing.*
+
+### Blue Marble: use ArcGIS REST tiles, not WMS
+
+The WMS approach with `{bbox-epsg-4326}` fails with HTTP 400 because **MapLibre does not substitute `{bbox-epsg-4326}`** — only `{bbox-epsg-3857}` is a built-in raster-source template variable. The literal string is forwarded to the WMS server, which rejects it.
+
+**Fix:** use the USGS ArcGIS REST tile endpoint instead:
+
+```ts
+map.addSource('blue-marble', {
+  type: 'raster',
+  tiles: [
+    'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',
+  ],
+  tileSize: 256,
+  attribution: '© USGS',
+});
+```
+
+Note the ArcGIS REST tile URL order is `{z}/{y}/{x}` (row/col), not `{z}/{x}/{y}`.
+
+---
+
+### Uniform globe lighting: omit the `light` style property
+
+Setting `light: { anchor: 'map', position: [...] }` in the style spec positions a directional sun that illuminates only one hemisphere, leaving the other half dark. **For uniform illumination, omit the `light` property entirely.**
+
+The `light` property is primarily intended for fill-extrusion (3D building) shading; for a raster-only globe it has no benefit and creates the half-dark artefact.
+
+---
+
+### htmlpreview.github.io: use `setInterval` poll, not `onload`
+
+htmlpreview patches `document.head.appendChild` so that `script.onload` is called **synchronously** before the script content has actually executed. A dynamic `<script>` loader using `js.onload = initMap` therefore calls `initMap()` before `maplibregl` is defined.
+
+**Fix:** poll with `setInterval` until `window.maplibregl` is truthy:
+
+```js
+(function () {
+  var js = document.createElement('script');
+  js.src = 'https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.js';
+  document.head.appendChild(js);
+  var t = setInterval(function () {
+    if (window.maplibregl) { clearInterval(t); initMap(); }
+  }, 50);
+})();
+```
+
+**GitHack** (`raw.githack.com`) serves HTML files as-is without any script interception and is a more reliable preview URL than htmlpreview.
