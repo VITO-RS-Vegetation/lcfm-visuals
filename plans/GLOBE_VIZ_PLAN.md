@@ -67,7 +67,7 @@ map.addLayer({ id: 'blue-marble', type: 'raster', source: 'blue-marble' });
 **Bands:** Band 1 = MAP (uint8, categorical), Band 2 = alpha  
 **No-data value:** 255 (transparent; distinct from class 254 = Unclassifiable)  
 **License:** [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)  
-**Attribution:** © VITO (Copernicus Land Monitoring Service / ESA, 2020). Made with Sentinel-1, Sentinel-2, AgERA5, and WorldDEM-30.
+**Attribution:** © VITO 2026. European Union's Copernicus Land Monitoring Service information. [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
 ### COG Architecture
 
@@ -109,19 +109,20 @@ const COLORMAP = encodeURIComponent(JSON.stringify({
   100: [0,   100, 200, 255],   // Permanent water    #0064C8
   110: [240, 240, 240, 255],   // Snow and ice       #F0F0F0
   254: [10,  10,  10,  255],   // Unclassifiable     #0A0A0A
-  // 255 = No-data; handled by the alpha band (band 2), not the colormap.
+  255: [0,   0,   0,   0],     // No-data → transparent (do NOT request bidx=2)
 }));
+// NOTE: bidx=1 only. bidx=1&bidx=2 + colormap → 422 (colormap needs 1 band).
 
 map.addSource('lcm10', {
   type: 'raster',
   tiles: [
-    `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@2x`
+    `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}`
     + `?url=${COG_URL}`
-    + `&bidx=1&bidx=2`       // band 1 = data, band 2 = alpha
+    + `&bidx=1`
     + `&colormap=${COLORMAP}`,
   ],
   tileSize: 512,
-  attribution: '© VITO 2026 / Copernicus',
+  attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
 });
 map.addLayer({
   id: 'lcm10',
