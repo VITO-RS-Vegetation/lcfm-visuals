@@ -533,3 +533,11 @@ htmlpreview patches `document.head.appendChild` so that `script.onload` is calle
 ```
 
 **GitHack** (`raw.githack.com`) serves HTML files as-is without any script interception and is a more reliable preview URL than htmlpreview.
+
+**GitHack caches branch-based URLs.** After a new commit, branch URLs (`.../main/...` or `.../my-branch/...`) may still serve the old file until the cache expires. Always use a **commit-SHA URL** to bypass this:
+
+```
+https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/globe_maplibre.html
+```
+
+Get the SHA with `git rev-parse HEAD`.
