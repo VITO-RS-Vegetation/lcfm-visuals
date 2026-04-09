@@ -8,9 +8,7 @@ PyVista-based tooling for the LCFM & SEN4LDN projects.
 
 Open directly in a browser via GitHack (no build step required):
 
-```
-https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_maplibre.html
-```
+[https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_maplibre.html](https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_maplibre.html)
 
 > If the page appears stale after a new commit, use a commit-SHA URL to bypass the CDN cache:
 > ```
