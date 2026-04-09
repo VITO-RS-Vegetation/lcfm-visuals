@@ -117,6 +117,10 @@
     );
 
     // ── Categorical colormap (value → [R, G, B, A]) ──
+    // 255 (no-data) is included here as fully transparent; we no longer
+    // request the alpha band (bidx=2) because titiler's colormap parameter
+    // requires exactly one input band — combining bidx=1&bidx=2 with colormap
+    // causes a 422 Unprocessable Content error.
     const COLORMAP = encodeURIComponent(JSON.stringify({
       10:  [0,   100,   0, 255],  // Tree cover
       20:  [255, 187,  34, 255],  // Shrubland
@@ -130,15 +134,15 @@
       100: [0,   100, 200, 255],  // Permanent water bodies
       110: [240, 240, 240, 255],  // Snow and ice
       254: [10,   10,  10, 255],  // Unclassifiable
-      // 255 = No-data → handled by alpha band (band 2); omit from colormap
+      255: [0,    0,   0,   0],   // No-data → fully transparent
     }));
 
     // ── titiler XYZ tile template ──
-    // bidx=1 → land cover band, bidx=2 → alpha mask (no-data / ocean = transparent)
+    // bidx=1 only: colormap maps band 1 values to RGBA (including 255→transparent).
     const LCM10_TILES =
-      'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@2x'
+      'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
       + `?url=${COG_URL}`
-      + '&bidx=1&bidx=2'
+      + '&bidx=1'
       + `&colormap=${COLORMAP}`;
 
     // ── Blue Marble — USGS ArcGIS REST tile endpoint ──
@@ -158,12 +162,12 @@
         sources: {},
         layers: [],
         sky: {
-          'atmosphere-blend': [
-            'interpolate', ['linear'], ['zoom'],
-            0, 1,
-            5, 1,
-            7, 0,
-          ],
+          // atmosphere-blend: 0 disables the atmospheric halo around the globe
+          // edge. With blend > 0 a bright arc/sliver appears at the globe limb
+          // (most visible top-left at default zoom/center). For a data viz with
+          // a flat raster overlay the glow adds no value and obscures the globe
+          // boundary; keeping it at 0 gives a clean uniform appearance.
+          'atmosphere-blend': 0,
         },
         // No 'light' property: the directional sun light (anchor:'map') lit
         // only one hemisphere, giving a half-dark globe. Omitting it gives

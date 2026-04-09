@@ -507,11 +507,45 @@ Note the ArcGIS REST tile URL order is `{z}/{y}/{x}` (row/col), not `{z}/{x}/{y}
 
 ---
 
-### Uniform globe lighting: omit the `light` style property
+### titiler + colormap: request exactly one band (`bidx=1`), encode no-data in colormap
 
-Setting `light: { anchor: 'map', position: [...] }` in the style spec positions a directional sun that illuminates only one hemisphere, leaving the other half dark. **For uniform illumination, omit the `light` property entirely.**
+Combining `bidx=1&bidx=2` with `colormap` causes a **422 Unprocessable Content** error. titiler's `colormap` parameter requires a **single-band input** — it maps each scalar pixel value to an RGBA colour. Requesting two bands produces a 2-channel output that the colormap pipeline cannot process.
 
-The `light` property is primarily intended for fill-extrusion (3D building) shading; for a raster-only globe it has no benefit and creates the half-dark artefact.
+**Fix:** request only `bidx=1` and add the no-data value (`255`) as fully transparent in the colormap:
+
+```ts
+const COLORMAP = encodeURIComponent(JSON.stringify({
+  10:  [0,   100,   0, 255],
+  // … other classes …
+  254: [10,  10,  10,  255],
+  255: [0,   0,   0,   0],   // no-data → fully transparent
+}));
+
+const tiles = `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}`
+  + `?url=${COG_URL}&bidx=1&colormap=${COLORMAP}`;
+```
+
+The `@2x` suffix (`/tile@2x`) is optional and can be omitted to simplify the URL.
+
+---
+
+### Uniform globe lighting: omit `light`; set `atmosphere-blend: 0`
+
+Two separate properties cause uneven illumination:
+
+1. **`light: { anchor: 'map', position: [...] }`** — positions a directional sun, darkening the opposite hemisphere. **Fix: omit the `light` property entirely.**
+
+2. **`sky: { 'atmosphere-blend': 1 }`** — even without a directional light, a value > 0 renders a bright atmospheric halo at the globe limb that appears as a sliver of excess brightness (most visible top-left at default zoom/center). **Fix: set `atmosphere-blend: 0`.**
+
+```ts
+style: {
+  version: 8,
+  projection: { type: 'globe' },
+  sky: { 'atmosphere-blend': 0 },  // no halo; omit 'light' entirely
+  sources: {},
+  layers: [],
+}
+```
 
 ---
 
