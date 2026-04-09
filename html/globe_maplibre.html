@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LCM-10 Globe — MapLibre GL JS</title>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.css" />
-  <script src="https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -95,6 +94,17 @@
   </div>
 
   <script>
+    // Dynamically load MapLibre so the init code runs only after the library
+    // is fully available — required for htmlpreview.github.io which rewrites
+    // <script src> tags into async loaders, causing inline scripts to run first.
+    (function () {
+      var js = document.createElement('script');
+      js.src = 'https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.js';
+      js.onload = initMap;
+      document.head.appendChild(js);
+    })();
+
+    function initMap() {
     // ── LCM-10 COG URL (public S3, HTTP range-requests confirmed working) ──
     const COG_URL = encodeURIComponent(
       'https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/LCM-10_v100_2020_MAP_lat-lon.tif'
@@ -189,6 +199,7 @@
         paint: { 'raster-opacity': 1.0 },
       });
     });
+    } // end initMap
   </script>
 </body>
 </html>
