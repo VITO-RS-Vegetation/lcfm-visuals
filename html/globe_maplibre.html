@@ -94,14 +94,20 @@
   </div>
 
   <script>
-    // Dynamically load MapLibre so the init code runs only after the library
-    // is fully available — required for htmlpreview.github.io which rewrites
-    // <script src> tags into async loaders, causing inline scripts to run first.
+    // Load MapLibre dynamically, then poll until window.maplibregl is defined
+    // before calling initMap.
+    //
+    // htmlpreview.github.io patches document.head.appendChild so that
+    // script.onload fires *synchronously* (before the script actually runs),
+    // meaning an onload-based approach calls initMap before maplibregl exists.
+    // A setInterval poll sidesteps that entirely.
     (function () {
       var js = document.createElement('script');
       js.src = 'https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.js';
-      js.onload = initMap;
       document.head.appendChild(js);
+      var t = setInterval(function () {
+        if (window.maplibregl) { clearInterval(t); initMap(); }
+      }, 50);
     })();
 
     function initMap() {
