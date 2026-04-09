@@ -576,3 +576,40 @@ https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/globe_ma
 ```
 
 Get the SHA with `git rev-parse HEAD`.
+
+---
+
+### Attribution control: compact by default
+
+The default MapLibre attribution bar (bottom-right) shows full text on load. To show only the `ⓘ` icon by default (expands on click), disable the auto-added control and add it manually with `compact: true`:
+
+```ts
+const map = new maplibregl.Map({
+  // …
+  attributionControl: false,  // disable auto-added control
+});
+
+map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+```
+
+Dark-theme CSS overrides for the attribution widget:
+
+```css
+.maplibregl-ctrl-attrib          { background: rgba(0,0,0,0.6) !important; color: #ccc !important; }
+.maplibregl-ctrl-attrib a        { color: #9bd !important; }
+.maplibregl-ctrl-attrib-button   { filter: invert(0.8); }
+```
+
+---
+
+### Legend: eye-icon toggle
+
+A small button (bottom-left) with an SVG eye / eye-off icon controls legend visibility. The legend panel sits immediately to the right (`left: 50px`). Toggling adds/removes a `.hidden` class that fades via `opacity` + `visibility` transition.
+
+```css
+#legend.hidden { opacity: 0; visibility: hidden; }
+```
+
+The toggle swaps between two inline SVG icons (`#eye-open` / `#eye-shut`) on each click.
+
+The **no-data (transparent)** row was removed from the legend — it conveys no colour information and the alpha behaviour is already documented in the plan.
