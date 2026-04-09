@@ -86,12 +86,9 @@
       border: 1px solid rgba(255,255,255,0.15);
     }
 
-    /* Attribution overrides for dark map */
-    .maplibregl-ctrl-attrib {
-      background: rgba(0,0,0,0.6) !important;
-      color: #ccc !important;
-    }
-    .maplibregl-ctrl-attrib a { color: #9bd !important; }
+    /* Attribution bar hidden — attribution is shown in the legend panel */
+    .maplibregl-ctrl-attrib,
+    .maplibregl-ctrl-attrib-button { display: none !important; }
   </style>
 </head>
 <body>
