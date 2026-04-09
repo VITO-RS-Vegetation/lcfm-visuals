@@ -197,17 +197,19 @@
     'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer';
 
   // ── 3. Map init ───────────────────────────────────────────────────────────────
-  // A real external style is required for setProjection({type:'globe'}) to work.
-  // With a blank inline style the projection update is silently dropped.
-  // CartoDB dark-matter is used as base; our raster layers cover it completely.
+  // Globe approach: pass projection:{type:'globe'} in the constructor combined
+  // with a real external style URL. Style-JSON projection and setProjection()
+  // in the load handler have both been confirmed non-functional in 4.7.1.
+  // CartoDB dark-matter is used as the base; our raster layers cover it fully.
   var map;
   try {
     map = new maplibregl.Map({
       container: 'map',
       style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-      center:  [10, 20],
-      zoom:    1.5,
-      maxZoom: 10,
+      center:     [10, 20],
+      zoom:       1.5,
+      maxZoom:    10,
+      projection: { type: 'globe' },   // object form in constructor
     });
   } catch (err) {
     setStatus('Map constructor failed: ' + err.message, true);
@@ -225,13 +227,9 @@
   });
 
   // ── 4. Layers ─────────────────────────────────────────────────────────────────
-  // Use once() — setProjection may fire a style reload; on() would double-add layers
+  // once() guards against setProjection firing a style-reload that re-runs the handler
   map.once('load', function () {
-    setStatus('Map loaded — setting globe…');
-
-    // Globe projection: works with external styles per anymap-ts reference.
-    // Must be called in load handler, not before.
-    map.setProjection({ type: 'globe' });
+    setStatus('Map loaded — adding layers…');
 
     // Sky atmosphere
     try {
@@ -246,10 +244,7 @@
       });
     } catch (_) {}
 
-    setStatus('Adding layers…');
-
     // Layer 1 — Blue Marble (USGS WMS, EPSG:3857)
-    // Placed on top of CartoDB base — covers it completely at full opacity
     map.addSource('blue-marble', {
       type: 'raster',
       tiles: [
