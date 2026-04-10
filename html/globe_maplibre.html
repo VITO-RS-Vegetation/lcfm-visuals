@@ -290,10 +290,10 @@
         paint: { 'raster-opacity': 1.0 },
       });
 
-      // ── Layer 3: Country borders (Natural Earth 110m) ──
+      // ── Layer 3: Country borders (Natural Earth 50m) ──
       map.addSource('country-borders', {
         type: 'geojson',
-        data: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson',
+        data: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
       });
       map.addLayer({
         id: 'country-borders',
@@ -305,7 +305,7 @@
           'visibility': 'visible',
         },
         paint: {
-          'line-color': '#ffffff',
+          'line-color': '#000000',
           'line-width': 0.7,
           'line-opacity': 0.55,
         },

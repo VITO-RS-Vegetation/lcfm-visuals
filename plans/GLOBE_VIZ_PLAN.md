@@ -2,12 +2,13 @@
 
 ## Goal
 
-A browser-based, interactive rotatable globe with two raster layers stacked:
+A browser-based, interactive rotatable globe with three layers stacked:
 
 1. **Blue Marble** (background) — USGS imagery
-2. **LCM-10 MAP** (foreground, semi-transparent) — COG served via titiler
+2. **LCM-10 MAP** (foreground) — COG served via titiler
+3. **Country borders** (top) — Natural Earth 50m GeoJSON line layer, toggleable
 
-The globe is freely rotatable and zoomable. The LCM-10 land cover layer sits on top of the Blue Marble imagery; ocean/no-data areas show the Blue Marble beneath.
+The globe is freely rotatable and zoomable. The LCM-10 land cover layer sits on top of the Blue Marble imagery; ocean/no-data areas show the Blue Marble beneath. Country borders can be shown/hidden via a toggle button on the right side of the screen.
 
 **Data sources:** see [`data.md`](data.md) for all URLs, specs, colormap, and access notes.
 
@@ -98,6 +99,27 @@ map.on('load', () => {
   });
   map.addLayer({ id: 'lcm10', type: 'raster', source: 'lcm10',
     paint: { 'raster-opacity': 1.0 } });
+
+  // Layer 3: Country borders (Natural Earth 50m) — see data.md §4
+  map.addSource('country-borders', {
+    type: 'geojson',
+    data: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
+  });
+  map.addLayer({
+    id: 'country-borders',
+    type: 'line',
+    source: 'country-borders',
+    layout: { 'line-join': 'round', 'line-cap': 'round', 'visibility': 'visible' },
+    paint: { 'line-color': '#000000', 'line-width': 0.7, 'line-opacity': 0.55 },
+  });
+});
+
+// Toggle button (right side, below MapLibre controls):
+const bordersBtn = document.getElementById('borders-toggle');
+bordersBtn.addEventListener('click', function () {
+  const next = map.getLayoutProperty('country-borders', 'visibility') === 'visible' ? 'none' : 'visible';
+  map.setLayoutProperty('country-borders', 'visibility', next);
+  bordersBtn.classList.toggle('active', next === 'visible');
 });
 ```
 
