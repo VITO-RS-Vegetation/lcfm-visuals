@@ -156,6 +156,44 @@
       }, 50);
     })();
 
+    // Convert WebMercator tile (z, x, y) → EPSG:4326 BBOX string for WMS 1.3.0.
+    // WMS 1.3.0 with CRS=EPSG:4326 uses axis order: minLat, minLon, maxLat, maxLon.
+    function tileToBbox4326(z, x, y) {
+      var n = Math.pow(2, z);
+      var lonMin = (x / n) * 360 - 180;
+      var lonMax = ((x + 1) / n) * 360 - 180;
+      var latMax = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * (180 / Math.PI);
+      var latMin = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 1) / n))) * (180 / Math.PI);
+      return latMin + ',' + lonMin + ',' + latMax + ',' + lonMax;
+    }
+
+    // Register a custom protocol that translates MapLibre tile requests into
+    // WMS 1.3.0 GetMap calls with CRS=EPSG:4326.
+    //
+    // MapLibre's raster source only substitutes {bbox-epsg-3857} — it does not
+    // support {bbox-epsg-4326} as a template variable.  addProtocol sidesteps
+    // this by intercepting each tile URL after {z}/{x}/{y} substitution and
+    // building the WMS request with a correctly computed EPSG:4326 BBOX.
+    //
+    // CORS note: addProtocol uses fetch(), which requires the WMS server to
+    // send Access-Control-Allow-Origin headers.  The USGS National Map services
+    // are public and include these headers.  If tiles fail with CORS errors,
+    // a lightweight proxy (e.g. Cloudflare Worker) would be needed.
+    maplibregl.addProtocol('wms4326', function (params, abortController) {
+      var parts = params.url.replace('wms4326://', '').split('/');
+      var z = Number(parts[0]), x = Number(parts[1]), y = Number(parts[2]);
+      var bbox = tileToBbox4326(z, x, y);
+      var wmsUrl =
+        'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer'
+        + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0'
+        + '&LAYERS=0&STYLES=&FORMAT=image/png&TRANSPARENT=false'
+        + '&CRS=EPSG:4326&WIDTH=256&HEIGHT=256'
+        + '&BBOX=' + bbox;
+      return fetch(wmsUrl, { signal: abortController.signal })
+        .then(function (r) { return r.arrayBuffer(); })
+        .then(function (data) { return { data: data }; });
+    });
+
     function initMap() {
     // ── LCM-10 COG URL (public S3, HTTP range-requests confirmed working) ──
     const COG_URL = encodeURIComponent(
@@ -191,13 +229,12 @@
       + '&bidx=1'
       + `&colormap=${COLORMAP}`;
 
-    // ── Blue Marble — USGS ArcGIS REST tile endpoint ──
-    // WMS with {bbox-epsg-4326} was used previously but MapLibre does not
-    // substitute that placeholder (only {bbox-epsg-3857} is built-in),
-    // causing a 400 error. The ArcGIS REST /tile/{z}/{y}/{x} endpoint uses
-    // standard XYZ placeholders that MapLibre handles natively.
-    const BLUE_MARBLE_TILES =
-      'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}';
+    // ── Blue Marble — USGS WMS 1.3.0, CRS=EPSG:4326 via custom protocol ──
+    // The custom 'wms4326' protocol (registered above) converts each MapLibre
+    // tile request into a WMS 1.3.0 GetMap call with CRS=EPSG:4326.
+    // EPSG:4326 (equirectangular) avoids the polar distortion that occurs when
+    // asking the WMS server to render in EPSG:3857 (WebMercator).
+    const BLUE_MARBLE_TILES = 'wms4326://{z}/{x}/{y}';
 
     // ── Map initialisation ──
     const map = new maplibregl.Map({
