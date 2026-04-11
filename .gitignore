@@ -37,3 +37,4 @@ Thumbs.db
 *.mp4
 *.gif
 *.png
+!images/*.png
