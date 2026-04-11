@@ -184,3 +184,64 @@ Authentication required (Terrascope OIDC).
 ### Terrascope native titiler
 
 `titiler.terrascope.be` supports a named `lcfm` colormap for tile previews but requires OIDC authentication. The public `titiler.xyz` instance with the explicit colormap above is used instead.
+
+---
+
+## 4. Country Borders — Natural Earth 50m
+
+### Source
+
+**Provider:** [Natural Earth](https://www.naturalearthdata.com/) — public domain cartographic dataset  
+**Repository:** `nvkelso/natural-earth-vector` on GitHub  
+**Scale:** 1:50 million (50m) — suitable for country-level zoom detail; a good balance between visual fidelity and file size
+
+### GeoJSON URL
+
+```
+https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson
+```
+
+Served by `raw.githubusercontent.com` with `Access-Control-Allow-Origin: *` — no CORS issues in the browser.
+
+### Technical notes
+
+| Property | Value |
+|---|---|
+| Format | GeoJSON (Polygon/MultiPolygon features) |
+| Scale | 1:50 million |
+| Approx. file size | ~3–4 MB (one-time fetch, browser-cached) |
+| Geometry type | Polygon / MultiPolygon (rendered as `line` in MapLibre) |
+| License | Public domain |
+
+Rendering polygon features as a MapLibre `line` type layer draws only the outlines — no fill — so the land-cover raster remains fully visible underneath. This also ensures island nations (Japan, Iceland, Philippines, etc.) get outlines, which a boundary-lines-only file would omit.
+
+### Scale comparison
+
+| Scale | File | Approx. size | Use case |
+|---|---|---|---|
+| 110m | `ne_110m_admin_0_countries.geojson` | ~360 KB | Global overview only |
+| **50m** | `ne_50m_admin_0_countries.geojson` | ~3–4 MB | **Country-level zoom — used in production** |
+| 10m | `ne_10m_admin_0_countries.geojson` | ~25 MB | Sub-national detail (may impact load time) |
+
+### MapLibre layer config
+
+```js
+map.addSource('country-borders', {
+  type: 'geojson',
+  data: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
+});
+map.addLayer({
+  id: 'country-borders',
+  type: 'line',
+  source: 'country-borders',
+  layout: {
+    'line-join': 'round',
+    'line-cap': 'round',
+    'visibility': 'visible',   // toggled at runtime via setLayoutProperty
+  },
+  paint: {
+    'line-color': '#000000',   // black — visible over all LCM-10 palette colours
+    'line-width': 0.7,
+    'line-opacity': 0.55,
+  },
+});

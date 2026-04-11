@@ -41,6 +41,29 @@
     #legend-toggle:hover { color: #fff; }
     #legend-toggle svg { display: block; }
 
+    /* Borders toggle button */
+    #borders-toggle {
+      position: absolute;
+      top: 180px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      background: rgba(15, 15, 15, 0.85);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      backdrop-filter: blur(4px);
+      color: #ccc;
+      transition: color 0.15s, background 0.15s;
+    }
+    #borders-toggle:hover { color: #fff; }
+    #borders-toggle.active { color: #fff; background: rgba(40, 90, 140, 0.85); }
+    #borders-toggle svg { display: block; }
+
     /* Legend panel */
     #legend {
       position: absolute;
@@ -116,6 +139,17 @@
       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
       <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
       <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  </button>
+
+  <!-- Borders toggle: show/hide country border lines -->
+  <button id="borders-toggle" class="active" title="Toggle country borders">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+         viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+      <line x1="8" y1="2" x2="8" y2="18"/>
+      <line x1="16" y1="6" x2="16" y2="22"/>
     </svg>
   </button>
 
@@ -255,6 +289,36 @@
         source: 'lcm10',
         paint: { 'raster-opacity': 1.0 },
       });
+
+      // ── Layer 3: Country borders (Natural Earth 50m) ──
+      map.addSource('country-borders', {
+        type: 'geojson',
+        data: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
+      });
+      map.addLayer({
+        id: 'country-borders',
+        type: 'line',
+        source: 'country-borders',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+          'visibility': 'visible',
+        },
+        paint: {
+          'line-color': '#000000',
+          'line-width': 0.7,
+          'line-opacity': 0.55,
+        },
+      });
+    });
+
+    // ── Borders toggle button wiring ──
+    const bordersBtn = document.getElementById('borders-toggle');
+    bordersBtn.addEventListener('click', function () {
+      const current = map.getLayoutProperty('country-borders', 'visibility');
+      const next = (current === 'visible') ? 'none' : 'visible';
+      map.setLayoutProperty('country-borders', 'visibility', next);
+      bordersBtn.classList.toggle('active', next === 'visible');
     });
     } // end initMap
   </script>
