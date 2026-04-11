@@ -220,7 +220,7 @@
     // ── titiler XYZ tile template ──
     // bidx=1 only: colormap maps band 1 values to RGBA (including 255→transparent).
     const LCM10_TILES =
-      'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
+      'https://titiler.xyz/cog/tiles/WebMercatorQuad@2x/{z}/{x}/{y}'
       + `?url=${COG_URL}`
       + '&bidx=1'
       + `&colormap=${COLORMAP}`;
@@ -285,7 +285,7 @@
       map.addSource('lcm10', {
         type: 'raster',
         tiles: [LCM10_TILES],
-        tileSize: 256,
+        tileSize: 512,
         attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
       });
       map.addLayer({
