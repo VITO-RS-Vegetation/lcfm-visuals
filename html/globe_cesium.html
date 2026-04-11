@@ -277,6 +277,10 @@
         TRANSPARENT: 'false',
         STYLES:      '',
       },
+      // Restrict to Web Mercator coverage (~±85.05°). The WMS returns opaque
+      // blank tiles beyond this latitude, which would overwrite globe.baseColor.
+      // Cesium skips tile requests outside this rectangle, exposing the base color.
+      rectangle: Cesium.Rectangle.fromDegrees(-180, -85.05113, 180, 85.05113),
       credit: new Cesium.Credit('© USGS'),
     }));
 
