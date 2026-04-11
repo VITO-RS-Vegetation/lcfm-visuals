@@ -39,26 +39,34 @@ Use `CRS=EPSG:4326` (WMS 1.3.0) or `SRS=EPSG:4326` (WMS 1.1.1). Axis order flips
 
 ### MapLibre tile endpoint
 
-The WMS `{bbox-epsg-4326}` template variable is **not** substituted by MapLibre — only `{bbox-epsg-3857}` is built-in. Passing it literally to the WMS server returns HTTP 400.
-
-**Use the ArcGIS REST tile endpoint instead:**
-
-```
-https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}
-```
-
-Note the URL order is `{z}/{y}/{x}` (row/col), not `{z}/{x}/{y}`.
+**Used in production — WMS 1.3.0, CRS=EPSG:3857:**
 
 ```js
 map.addSource('blue-marble', {
   type: 'raster',
   tiles: [
-    'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',
+    'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer'
+    + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0'
+    + '&LAYERS=0&STYLES=&FORMAT=image/png&TRANSPARENT=false'
+    + '&CRS=EPSG:3857&WIDTH=256&HEIGHT=256'
+    + '&BBOX={bbox-epsg-3857}',
   ],
   tileSize: 256,
   attribution: '© USGS',
 });
 ```
+
+MapLibre's `raster` source substitutes `{bbox-epsg-3857}` natively. Tiles are in WebMercator, which aligns perfectly with MapLibre's internal tile grid — no seams or reprojection artifacts.
+
+**WMS version note:** `VERSION=1.3.0` uses `CRS=` for the projection parameter; `VERSION=1.1.x` uses `SRS=`. The USGS endpoint supports both.
+
+#### Why not EPSG:4326?
+
+MapLibre does **not** substitute `{bbox-epsg-4326}` — only `{bbox-epsg-3857}` is built-in. The literal string is forwarded to the WMS server, which returns HTTP 400.
+
+A `maplibregl.addProtocol()` workaround was tested: it intercepts each tile request, computes an EPSG:4326 bounding box from the WebMercator tile coordinates, and fires a WMS 1.3.0 call with `CRS=EPSG:4326`. This eliminates the 400 error but introduces **projection seam artifacts** — the WMS returns equirectangular (lat/lon) images, but MapLibre positions them in WebMercator tile slots. At high latitudes (≥ ~60°N) the mismatch between the two projections is severe enough to create visible white slits at tile edges, especially near the antimeridian.
+
+Conclusion: `addProtocol` + EPSG:4326 is not viable for tile-based display. EPSG:3857 with `{bbox-epsg-3857}` is the correct approach for MapLibre WMS raster sources. Polar coverage gaps (above ~85°N) are an imagery limitation of the USGS service, not a projection issue.
 
 ---
 

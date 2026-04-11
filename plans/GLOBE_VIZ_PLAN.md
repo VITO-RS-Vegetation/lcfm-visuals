@@ -75,11 +75,16 @@ Add sources and layers on `map.on('load', ...)`. Tile URLs and the colormap JSON
 
 ```ts
 map.on('load', () => {
-  // Layer 1: Blue Marble (background)
+  // Layer 1: Blue Marble (background) — USGS WMS 1.3.0, CRS=EPSG:3857
+  // See data.md §1 for full notes on WMS version and projection choice.
   map.addSource('blue-marble', {
     type: 'raster',
     tiles: [
-      'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',
+      'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer'
+      + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0'
+      + '&LAYERS=0&STYLES=&FORMAT=image/png&TRANSPARENT=false'
+      + '&CRS=EPSG:3857&WIDTH=256&HEIGHT=256'
+      + '&BBOX={bbox-epsg-3857}',
     ],
     tileSize: 256,
     attribution: '© USGS',
