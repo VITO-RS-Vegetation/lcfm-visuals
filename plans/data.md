@@ -89,6 +89,8 @@ The S3/CloudFerro URL is used in production.
 | CRS | EPSG:4326 |
 | Size | 36 000 × 14 275 px |
 | Coverage | 180°W–180°E, 60°S–83°N |
+| Block size | 512 × 512 px |
+| Overviews | 2, 4, 8, 16, 32, 64, 128 |
 | Band 1 | MAP — uint8, categorical land cover class |
 | Band 2 | Alpha mask |
 | No-data value | 255 (fully transparent; distinct from class 254 = Unclassifiable) |
@@ -117,6 +119,10 @@ The S3/CloudFerro URL is used in production.
 
 [titiler.xyz](https://titiler.xyz/) is a free public COG tile server. The browser requests standard XYZ tiles; titiler fetches the COG from S3 server-side. No CORS issues — the browser only talks to titiler.xyz.
 
+#### Tile size
+
+Use `&tilesize=512` in the tile URL and `tileSize: 512` in the MapLibre source config. The COG block size is 512 px, so each titiler tile request reads exactly one COG block at the appropriate overview level — minimising S3 range requests. At z=1 this also causes titiler to select overview 32 (1 125 px) rather than overview 64 (562 px), providing 4× the pixel data per tile compared to tilesize=256.
+
 #### Band selection
 
 Combining `bidx=1&bidx=2` with `colormap` returns **HTTP 422 Unprocessable Content**. titiler's `colormap` parameter requires a single-band input; two bands produce a 2-channel output the colormap pipeline cannot process.
@@ -144,7 +150,7 @@ const COLORMAP = encodeURIComponent(JSON.stringify({
 }));
 
 // XYZ tile URL template:
-`https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${COG_URL}&bidx=1&colormap=${COLORMAP}`
+`https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${COG_URL}&bidx=1&colormap=${COLORMAP}&tilesize=512`
 ```
 
 Verify COG access:

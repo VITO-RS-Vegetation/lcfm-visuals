@@ -223,7 +223,8 @@
       'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
       + `?url=${COG_URL}`
       + '&bidx=1'
-      + `&colormap=${COLORMAP}`;
+      + `&colormap=${COLORMAP}`
+      + '&tilesize=512';
 
     // ── Blue Marble — USGS WMS 1.3.0, CRS=EPSG:3857 ──
     // WMS 1.3.0 uses CRS= (instead of SRS= in 1.1.x) and {bbox-epsg-3857}
@@ -285,7 +286,7 @@
       map.addSource('lcm10', {
         type: 'raster',
         tiles: [LCM10_TILES],
-        tileSize: 256,
+        tileSize: 512,
         attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
       });
       map.addLayer({
