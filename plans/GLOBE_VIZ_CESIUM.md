@@ -38,7 +38,7 @@ The globe is freely rotatable and zoomable. The LCM-10 land cover layer sits on 
 | Globe renderer | `projection: { type: 'globe' }` | Always 3D — no config needed |
 | Globe/flat toggle | `GlobeControl` | `sceneModePicker: true` (3D / 2D / Columbus) |
 | WMS layer | `type:'raster'` + `{bbox-epsg-3857}` | `WebMapServiceImageryProvider` |
-| XYZ raster tiles | `type:'raster'` + `{z}/{x}/{y}` | `UrlTemplateImageryProvider` + `{reverseY}` |
+| XYZ raster tiles | `type:'raster'` + `{z}/{x}/{y}` | `UrlTemplateImageryProvider` + `{y}` + `WebMercatorTilingScheme` |
 | Vector borders | `type:'geojson'` source + `type:'line'` layer | `GeoJsonDataSource.load()` with `fill: TRANSPARENT` |
 | Borders visibility | `setLayoutProperty('visibility','none')` | `bordersDataSource.show = false` |
 | Atmosphere off | `sky: { atmosphere-blend: 0 }`, no `light` | 7-property disable sequence (see Globe Setup) |
@@ -170,12 +170,13 @@ viewer.imageryLayers.addImageryProvider(new Cesium.WebMapServiceImageryProvider(
 }));
 
 // Layer 2 — LCM-10 via titiler
-// CRITICAL: use {reverseY}, not {y}.
-// Cesium uses TMS-style (south-origin) Y; titiler expects XYZ/slippy (north-origin) Y.
-// {reverseY} converts from TMS to XYZ before the HTTP request is made.
+// Use {y} (Cesium's {y} = Y=0 at north = XYZ convention, matching titiler).
+// tilingScheme: WebMercatorTilingScheme is required — the default GeographicTilingScheme
+// assigns wrong lat/lon extents to Web Mercator tiles, misplacing them on the globe.
 viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
-  url: `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{reverseY}`
+  url: `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}`
      + `?url=${COG_URL}&bidx=1&colormap=${COLORMAP}`,
+  tilingScheme: new Cesium.WebMercatorTilingScheme(),
   tileWidth: 256, tileHeight: 256,
   minimumLevel: 0, maximumLevel: 12,
   credit: new Cesium.Credit(
@@ -191,10 +192,11 @@ const bordersDataSource = new Cesium.GeoJsonDataSource('country-borders');
 bordersDataSource.load(
   'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
   {
-    stroke:        Cesium.Color.BLACK.withAlpha(0.55), // matches MapLibre line-opacity:0.55
-    fill:          Cesium.Color.TRANSPARENT,            // no fill — land-cover visible beneath
-    strokeWidth:   1.0,                                 // WebGL caps lineWidth at 1px in most browsers
-    clampToGround: true,                               // drape outlines on globe surface
+    stroke:      Cesium.Color.BLACK.withAlpha(0.55), // matches MapLibre line-opacity:0.55
+    fill:        Cesium.Color.TRANSPARENT,            // no fill — land-cover visible beneath
+    strokeWidth: 1.0,                                 // WebGL caps lineWidth at 1px in most browsers
+    // clampToGround omitted: Cesium suppresses polygon outlines when clampToGround:true
+    // (WebGL rendering pipeline restriction). No terrain layer, so height:0 = on surface.
   }
 ).then(function () {
   viewer.dataSources.add(bordersDataSource);
@@ -299,15 +301,18 @@ CDN pattern for any version: `https://cesium.com/downloads/cesiumjs/releases/{VE
 
 *From design review (2026-04-11).*
 
-### `{reverseY}` is mandatory for titiler tiles
+### `{y}` + `WebMercatorTilingScheme` for titiler tiles
 
-CesiumJS's `UrlTemplateImageryProvider` uses TMS-style tile Y (0 = south pole). titiler and MapLibre use XYZ/slippy Y (0 = north pole). Using `{y}` causes every tile to be the vertically mirrored row — land cover appears at the wrong latitude.
+Two settings are required for `UrlTemplateImageryProvider` to correctly place WebMercatorQuad tiles:
 
-**Fix:** use `{reverseY}` — Cesium's built-in placeholder that converts TMS Y to XYZ Y before the HTTP request.
+1. **`{y}` in the URL template** — Cesium's `{y}` placeholder means Y=0 at the north (XYZ/slippy convention), which is what titiler expects. `{reverseY}` would flip to TMS convention (Y=0 at south) — wrong for titiler.
+
+2. **`tilingScheme: new Cesium.WebMercatorTilingScheme()`** — The default is `GeographicTilingScheme`, which divides the globe into 2:1 geographic tiles. Without specifying Web Mercator, Cesium assigns incorrect lat/lon extents to each tile, placing them in the wrong location on the globe.
 
 ```
-WRONG:   .../WebMercatorQuad/{z}/{x}/{y}?...
-CORRECT: .../WebMercatorQuad/{z}/{x}/{reverseY}?...
+WRONG:   url: .../WebMercatorQuad/{z}/{x}/{reverseY}?...  (no tilingScheme)
+CORRECT: url: .../WebMercatorQuad/{z}/{x}/{y}?...
+         tilingScheme: new Cesium.WebMercatorTilingScheme()
 ```
 
 ### WMS uses EPSG:4326 automatically

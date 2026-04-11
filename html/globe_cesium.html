@@ -280,14 +280,18 @@
     }));
 
     // ── Layer 2: LCM-10 land cover (titiler XYZ tiles) ────────────────────────
-    // CRITICAL: use {reverseY}, not {y}.
-    // Cesium uses TMS-style tile Y (0 = south pole); titiler expects XYZ/slippy Y
-    // (0 = north pole, same as MapLibre). {reverseY} converts internally before
-    // the HTTP request is sent, so titiler receives the correct row index.
-    // Without this, every tile would be the vertically mirrored row.
+    // Use {y} (not {reverseY}): Cesium's {y} means Y=0 at the north (XYZ/slippy
+    // convention), which is exactly what titiler expects. {reverseY} would flip
+    // to TMS convention (Y=0 at south) — wrong for titiler.
+    //
+    // tilingScheme: WebMercatorTilingScheme is required because titiler serves
+    // WebMercatorQuad tiles. Without it, Cesium defaults to GeographicTilingScheme
+    // and assigns wrong lat/lon extents to each tile, placing them in the wrong
+    // location on the globe.
     viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
-      url: `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{reverseY}`
+      url: `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}`
          + `?url=${COG_URL}&bidx=1&colormap=${COLORMAP}`,
+      tilingScheme: new Cesium.WebMercatorTilingScheme(),
       tileWidth:    256,
       tileHeight:   256,
       minimumLevel: 0,
@@ -303,15 +307,17 @@
     // GeoJsonDataSource converts polygon/multipolygon features to entities.
     // fill:TRANSPARENT + stroke draws outlines only — the LCM-10 raster beneath
     // remains fully visible, equivalent to MapLibre's type:'line' layer.
-    // clampToGround:true drapes outlines on the globe surface.
+    //
+    // clampToGround is intentionally omitted: Cesium suppresses polygon outlines
+    // when clampToGround:true (a WebGL rendering pipeline restriction). Since
+    // there is no terrain layer, features at height 0 sit on the globe surface.
     const bordersDataSource = new Cesium.GeoJsonDataSource('country-borders');
     bordersDataSource.load(
       'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
       {
-        stroke:        Cesium.Color.BLACK.withAlpha(0.55), // matches MapLibre line-opacity:0.55
-        fill:          Cesium.Color.TRANSPARENT,
-        strokeWidth:   1.0,   // WebGL caps lineWidth at 1px in most browsers
-        clampToGround: true,
+        stroke:      Cesium.Color.BLACK.withAlpha(0.55), // matches MapLibre line-opacity:0.55
+        fill:        Cesium.Color.TRANSPARENT,
+        strokeWidth: 1.0,   // WebGL caps lineWidth at 1px in most browsers
       }
     ).then(function () {
       viewer.dataSources.add(bordersDataSource);
