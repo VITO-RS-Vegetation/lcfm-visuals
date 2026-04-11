@@ -194,8 +194,8 @@ def _read_overview(src: rasterio.DatasetReader, downsample: int,
     return src.read(out_shape=target_shape, resampling=resampling_fallback, **kwargs)
 
 
-def load_data(cog_url: str, downsample: int) -> np.ndarray:
-    """Open the LCM-10 COG and return an RGBA (H, W, 4) uint8 array.
+def load_data(cog_url: str, downsample: int) -> tuple[np.ndarray, list[float]]:
+    """Open the LCM-10 COG and return an RGBA (H, W, 4) array and its extent.
 
     Uses ``Resampling.mode`` as fallback (majority vote — correct for
     categorical data).
@@ -205,12 +205,17 @@ def load_data(cog_url: str, downsample: int) -> np.ndarray:
         downsample: Integer decimation factor (e.g. 8 → 1/8 resolution).
 
     Returns:
-        RGBA array ready for ``ax.imshow``.
+        Tuple of (RGBA array, extent) where extent is
+        ``[left, right, bottom, top]`` in degrees, read directly from the COG
+        metadata (e.g. [-180, 180, -60, 83] for LCM-10).
     """
     print(f"Opening LCM-10 COG: {cog_url}")
     with rasterio.open(cog_url) as src:
         print(f"  native size : {src.width} × {src.height}")
         print(f"  overviews   : {src.overviews(1)}")
+        b = src.bounds
+        extent = [b.left, b.right, b.bottom, b.top]
+        print(f"  extent      : {extent}")
         data = _read_overview(src, downsample, Resampling.mode)
 
     band       = data[0]
@@ -219,11 +224,11 @@ def load_data(cog_url: str, downsample: int) -> np.ndarray:
     print("  applying colormap ...")
     rgba = apply_colormap(band, alpha_band, COLORMAP_HEX)
     print(f"  done — RGBA shape {rgba.shape}")
-    return rgba
+    return rgba, extent
 
 
-def load_background(cog_url: str, downsample: int) -> np.ndarray:
-    """Open a background imagery COG and return an (H, W, 3) uint8 RGB array.
+def load_background(cog_url: str, downsample: int) -> tuple[np.ndarray, list[float]]:
+    """Open a background imagery COG and return an (H, W, 3) RGB array and extent.
 
     Reads only the first three bands (R, G, B).  Uses ``Resampling.bilinear``
     as fallback, which is appropriate for continuous imagery.
@@ -233,21 +238,26 @@ def load_background(cog_url: str, downsample: int) -> np.ndarray:
         downsample: Integer decimation factor.
 
     Returns:
-        RGB array of shape (H, W, 3), dtype uint8, ready for ``ax.imshow``.
+        Tuple of (RGB array, extent) where extent is
+        ``[left, right, bottom, top]`` in degrees, read from the COG metadata.
     """
     print(f"Opening background COG: {cog_url}")
     with rasterio.open(cog_url) as src:
         print(f"  native size : {src.width} × {src.height}")
         print(f"  overviews   : {src.overviews(1)}")
+        b = src.bounds
+        extent = [b.left, b.right, b.bottom, b.top]
+        print(f"  extent      : {extent}")
         data = _read_overview(src, downsample, Resampling.bilinear, bands=[1, 2, 3])
 
     rgb = np.moveaxis(data, 0, -1)  # (3, H, W) → (H, W, 3)
     print(f"  done — RGB shape {rgb.shape}")
-    return rgb
+    return rgb, extent
 
 
 def build_figure(
     rgba: np.ndarray,
+    lcm_extent: list[float],
     globe_centers: list[tuple[float, float]],
     background: str,
     fig_w_per_globe: float,
@@ -255,11 +265,14 @@ def build_figure(
     coastline_color: str,
     coastline_width: float,
     bg_rgb: np.ndarray | None = None,
+    bg_extent: list[float] | None = None,
 ) -> plt.Figure:
     """Compose the multi-panel globe figure.
 
     Args:
-        rgba: RGBA (H, W, 4) uint8 array covering [-180, 180] × [-90, 90].
+        rgba: RGBA (H, W, 4) uint8 LCM-10 array.
+        lcm_extent: ``[left, right, bottom, top]`` in degrees for the LCM-10
+            layer (e.g. ``[-180, 180, -60, 83]``).
         globe_centers: List of (central_lon, central_lat) for each panel.
         background: ``"black"``, ``"white"``, or ``"transparent"``.
         fig_w_per_globe: Width per globe panel in inches.
@@ -268,6 +281,8 @@ def build_figure(
         coastline_width: Line width for coastline features.
         bg_rgb: Optional (H, W, 3) uint8 RGB background imagery.  ``None``
             → use Cartopy's built-in Natural Earth stock image instead.
+        bg_extent: ``[left, right, bottom, top]`` for ``bg_rgb``.  Ignored
+            when ``bg_rgb`` is ``None``.
 
     Returns:
         Configured :class:`matplotlib.figure.Figure`.
@@ -295,7 +310,7 @@ def build_figure(
             ax.imshow(
                 bg_rgb,
                 origin="upper",
-                extent=[-180, 180, -90, 90],
+                extent=bg_extent,
                 transform=ccrs.PlateCarree(),
                 interpolation="bilinear",
                 zorder=0,
@@ -306,11 +321,11 @@ def build_figure(
 
         # --- LCM-10 land cover overlay (zorder 1) --------------------------
         # No-data pixels (alpha=0) are transparent, letting the background
-        # show through in areas outside the LCM-10 coverage extent.
+        # show through in areas outside the LCM-10 coverage extent (60S–83N).
         ax.imshow(
             rgba,
             origin="upper",
-            extent=[-180, 180, -90, 90],
+            extent=lcm_extent,
             transform=ccrs.PlateCarree(),
             interpolation="nearest",
             zorder=1,
@@ -331,11 +346,12 @@ def build_figure(
 
 
 def main() -> None:
-    rgba = load_data(COG_URL, DOWNSAMPLE_FACTOR)
+    rgba, lcm_extent = load_data(COG_URL, DOWNSAMPLE_FACTOR)
 
     bg_rgb: np.ndarray | None = None
+    bg_extent: list[float] | None = None
     if BG_COG_URL:
-        bg_rgb = load_background(BG_COG_URL, BG_DOWNSAMPLE_FACTOR)
+        bg_rgb, bg_extent = load_background(BG_COG_URL, BG_DOWNSAMPLE_FACTOR)
 
     if len(GLOBE_CENTERS) != N_GLOBES:
         raise ValueError(
@@ -346,6 +362,7 @@ def main() -> None:
     print(f"Building {N_GLOBES}-globe figure (background={BACKGROUND!r}, base={bg_label}) ...")
     fig = build_figure(
         rgba=rgba,
+        lcm_extent=lcm_extent,
         globe_centers=GLOBE_CENTERS,
         background=BACKGROUND,
         fig_w_per_globe=FIG_WIDTH_PER_GLOBE,
@@ -353,6 +370,7 @@ def main() -> None:
         coastline_color=COASTLINE_COLOR,
         coastline_width=COASTLINE_WIDTH,
         bg_rgb=bg_rgb,
+        bg_extent=bg_extent,
     )
 
     transparent = BACKGROUND == "transparent"
