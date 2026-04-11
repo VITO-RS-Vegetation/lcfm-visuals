@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCM-10 Globe — CesiumJS</title>
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Widgets/widgets.css" />
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    #cesiumContainer {
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+
+    /* Legend toggle button */
+    #legend-toggle {
+      position: absolute;
+      bottom: 30px;
+      left: 10px;
+      width: 32px;
+      height: 32px;
+      background: rgba(15, 15, 15, 0.85);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      backdrop-filter: blur(4px);
+      color: #ccc;
+      transition: color 0.15s;
+    }
+    #legend-toggle:hover { color: #fff; }
+    #legend-toggle svg { display: block; }
+
+    /* Borders toggle button */
+    #borders-toggle {
+      position: absolute;
+      top: 180px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      background: rgba(15, 15, 15, 0.85);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      backdrop-filter: blur(4px);
+      color: #ccc;
+      transition: color 0.15s, background 0.15s;
+    }
+    #borders-toggle:hover { color: #fff; }
+    #borders-toggle.active { color: #fff; background: rgba(40, 90, 140, 0.85); }
+    #borders-toggle svg { display: block; }
+
+    /* Legend panel */
+    #legend {
+      position: absolute;
+      bottom: 30px;
+      left: 50px;
+      background: rgba(15, 15, 15, 0.85);
+      color: #eee;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.6;
+      max-height: calc(100vh - 60px);
+      overflow-y: auto;
+      z-index: 1;
+      backdrop-filter: blur(4px);
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    #legend.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    #legend h3 {
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    /* Custom attribution container — dark-themed, bottom-right */
+    #cesium-credit {
+      position: absolute;
+      bottom: 5px;
+      right: 10px;
+      font-size: 10px;
+      color: #888;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 2px 6px;
+      border-radius: 3px;
+      z-index: 1;
+    }
+    #cesium-credit a { color: #9bd; text-decoration: none; }
+
+    /* Hide the Cesium logo and default credit bar */
+    .cesium-credit-logoContainer { display: none !important; }
+    .cesium-widget-credits        { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+
+  <!-- Eye toggle: always visible, controls legend visibility -->
+  <button id="legend-toggle" title="Toggle legend" onclick="
+    var l = document.getElementById('legend');
+    var open = !l.classList.contains('hidden');
+    l.classList.toggle('hidden', open);
+    document.getElementById('eye-open').style.display  = open ? 'none'  : 'block';
+    document.getElementById('eye-shut').style.display  = open ? 'block' : 'none';
+  ">
+    <!-- eye-open (visible by default) -->
+    <svg id="eye-open" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+    <!-- eye-shut (hidden by default) -->
+    <svg id="eye-shut" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  </button>
+
+  <!-- Borders toggle: show/hide country border lines -->
+  <button id="borders-toggle" class="active" title="Toggle country borders">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+         viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+      <line x1="8" y1="2" x2="8" y2="18"/>
+      <line x1="16" y1="6" x2="16" y2="22"/>
+    </svg>
+  </button>
+
+  <div id="legend">
+    <h3>LCM-10 Land Cover (2020)</h3>
+    <div class="legend-item"><div class="swatch" style="background:#006400"></div><span>Tree cover</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#FFBB22"></div><span>Shrubland</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#FFFF4C"></div><span>Grassland</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#F096FF"></div><span>Cropland</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#0096A0"></div><span>Herbaceous wetland</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#00CF75"></div><span>Mangroves</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#FAE6A0"></div><span>Moss and lichen</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#B4B4B4"></div><span>Bare / sparse vegetation</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#FA0000"></div><span>Built-up</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#0064C8"></div><span>Permanent water bodies</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#F0F0F0"></div><span>Snow and ice</span></div>
+    <div class="legend-item"><div class="swatch" style="background:#0A0A0A;border-color:rgba(255,255,255,0.4)"></div><span>Unclassifiable</span></div>
+    <hr style="border-color:rgba(255,255,255,0.12);margin:8px 0 6px" />
+    <div style="font-size:10px;color:#888;line-height:1.4">
+      © VITO 2026. European Union's Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/" style="color:#9bd" target="_blank">CC-BY 4.0</a>
+    </div>
+  </div>
+
+  <!-- Custom credit container (dark-themed, bottom-right) -->
+  <div id="cesium-credit"></div>
+
+  <script>
+    // ── Ion token ─────────────────────────────────────────────────────────────
+    // We use no Cesium ion-hosted assets (all data comes from USGS, CloudFerro,
+    // and GitHub). An empty string suppresses the API call; set a real token
+    // from cesium.com/ion (free) to also suppress the console warning.
+    Cesium.Ion.defaultAccessToken = '';
+
+    // ── LCM-10 COG URL (public S3, HTTP range-requests confirmed working) ─────
+    const COG_URL = encodeURIComponent(
+      'https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/LCM-10_v100_2020_MAP_lat-lon.tif'
+    );
+
+    // ── Categorical colormap (value → [R, G, B, A]) ───────────────────────────
+    // 255 (no-data) → fully transparent; identical to globe_maplibre.html.
+    // bidx=1 only: titiler's colormap parameter requires a single-band input.
+    const COLORMAP = encodeURIComponent(JSON.stringify({
+      10:  [0,   100,   0, 255],  // Tree cover
+      20:  [255, 187,  34, 255],  // Shrubland
+      30:  [255, 255,  76, 255],  // Grassland
+      40:  [240, 150, 255, 255],  // Cropland
+      50:  [0,   150, 160, 255],  // Herbaceous wetland
+      60:  [0,   207, 117, 255],  // Mangroves
+      70:  [250, 230, 160, 255],  // Moss and lichen
+      80:  [180, 180, 180, 255],  // Bare/sparse vegetation
+      90:  [250,   0,   0, 255],  // Built-up
+      100: [0,   100, 200, 255],  // Permanent water bodies
+      110: [240, 240, 240, 255],  // Snow and ice
+      254: [10,   10,  10, 255],  // Unclassifiable
+      255: [0,     0,   0,   0],  // No-data → fully transparent
+    }));
+
+    // ── Viewer initialisation ─────────────────────────────────────────────────
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+      animation:            false,  // hide clock widget
+      timeline:             false,  // hide time scrubber
+      baseLayerPicker:      false,  // we add imagery manually
+      geocoder:             false,  // no search bar
+      homeButton:           false,  // no home button
+      infoBox:              false,  // no entity info popup on click
+      selectionIndicator:   false,  // no green selection ring
+      navigationHelpButton: false,  // no keyboard/mouse help overlay
+      sceneModePicker:      true,   // 3D / 2D / Columbus toggle (≈ MapLibre GlobeControl)
+      baseLayer:            false,  // do not load default Bing Maps layer
+      creditContainer:      document.getElementById('cesium-credit'),
+    });
+
+    // ── Atmosphere and lighting disable sequence ───────────────────────────────
+    // CesiumJS has multiple independent atmosphere/lighting systems.
+    // Each must be disabled to match MapLibre's uniform-look
+    // (atmosphere-blend:0, no directional light).
+    viewer.scene.skyAtmosphere.show         = false; // blue halo at globe limb
+    viewer.scene.skyBox.show                = false; // star field background
+    viewer.scene.sun.show                   = false;
+    viewer.scene.moon.show                  = false;
+    viewer.scene.globe.showGroundAtmosphere = false; // tiles darkened at horizon edge
+    viewer.scene.globe.enableLighting       = false; // day/night terminator
+    viewer.scene.fog.enabled                = false;
+    viewer.scene.backgroundColor            = Cesium.Color.BLACK;
+
+    // ── Initial camera position ────────────────────────────────────────────────
+    // lon:10, lat:30, height ~15,000 km ≈ MapLibre center:[10,30] zoom:1.5
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(10, 30, 15000000),
+      orientation: {
+        heading: 0.0,
+        pitch:   -Cesium.Math.PI_OVER_TWO,  // looking straight down
+        roll:    0.0,
+      },
+    });
+
+    // ── Remove any default imagery layer ──────────────────────────────────────
+    // Safety net: baseLayer:false above already prevents the default Bing Maps
+    // request, but removeAll() ensures a clean slate regardless of version.
+    viewer.imageryLayers.removeAll();
+
+    // ── Layer 1: Blue Marble (USGS WMS 1.3.0) ─────────────────────────────────
+    // Cesium's WebMapServiceImageryProvider handles the BBOX calculation
+    // natively in EPSG:4326. Unlike MapLibre, no {bbox-epsg-3857} template or
+    // addProtocol workaround is needed — the USGS endpoint responds correctly.
+    viewer.imageryLayers.addImageryProvider(new Cesium.WebMapServiceImageryProvider({
+      url: 'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer',
+      layers: '0',
+      parameters: {
+        SERVICE:     'WMS',
+        VERSION:     '1.3.0',
+        REQUEST:     'GetMap',
+        FORMAT:      'image/png',
+        TRANSPARENT: 'false',
+        STYLES:      '',
+      },
+      credit: new Cesium.Credit('© USGS'),
+    }));
+
+    // ── Layer 2: LCM-10 land cover (titiler XYZ tiles) ────────────────────────
+    // CRITICAL: use {reverseY}, not {y}.
+    // Cesium uses TMS-style tile Y (0 = south pole); titiler expects XYZ/slippy Y
+    // (0 = north pole, same as MapLibre). {reverseY} converts internally before
+    // the HTTP request is sent, so titiler receives the correct row index.
+    // Without this, every tile would be the vertically mirrored row.
+    viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+      url: `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{reverseY}`
+         + `?url=${COG_URL}&bidx=1&colormap=${COLORMAP}`,
+      tileWidth:    256,
+      tileHeight:   256,
+      minimumLevel: 0,
+      maximumLevel: 12,  // COG overviews go to ~zoom 12; avoids 404s at high zoom
+      credit: new Cesium.Credit(
+        "© VITO 2026. European Union's Copernicus Land Monitoring Service information. "
+        + '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC-BY 4.0</a>',
+        true,
+      ),
+    }));
+
+    // ── Layer 3: Country borders (Natural Earth 50m GeoJSON) ──────────────────
+    // GeoJsonDataSource converts polygon/multipolygon features to entities.
+    // fill:TRANSPARENT + stroke draws outlines only — the LCM-10 raster beneath
+    // remains fully visible, equivalent to MapLibre's type:'line' layer.
+    // clampToGround:true drapes outlines on the globe surface.
+    const bordersDataSource = new Cesium.GeoJsonDataSource('country-borders');
+    bordersDataSource.load(
+      'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
+      {
+        stroke:        Cesium.Color.BLACK.withAlpha(0.55), // matches MapLibre line-opacity:0.55
+        fill:          Cesium.Color.TRANSPARENT,
+        strokeWidth:   1.0,   // WebGL caps lineWidth at 1px in most browsers
+        clampToGround: true,
+      }
+    ).then(function () {
+      viewer.dataSources.add(bordersDataSource);
+
+      // ── Borders toggle button wiring ────────────────────────────────────────
+      // Wired here (inside .then) to guarantee bordersDataSource is available.
+      const bordersBtn = document.getElementById('borders-toggle');
+      bordersBtn.addEventListener('click', function () {
+        bordersDataSource.show = !bordersDataSource.show;
+        bordersBtn.classList.toggle('active', bordersDataSource.show);
+      });
+    });
+  </script>
+</body>
+</html>
