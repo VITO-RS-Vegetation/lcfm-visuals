@@ -220,10 +220,11 @@
     // ── titiler XYZ tile template ──
     // bidx=1 only: colormap maps band 1 values to RGBA (including 255→transparent).
     const LCM10_TILES =
-      'https://titiler.xyz/cog/tiles/WebMercatorQuad@2x/{z}/{x}/{y}'
+      'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
       + `?url=${COG_URL}`
       + '&bidx=1'
-      + `&colormap=${COLORMAP}`;
+      + `&colormap=${COLORMAP}`
+      + '&tilesize=512';
 
     // ── Blue Marble — USGS WMS 1.3.0, CRS=EPSG:3857 ──
     // WMS 1.3.0 uses CRS= (instead of SRS= in 1.1.x) and {bbox-epsg-3857}
