@@ -6,8 +6,20 @@ side-by-side and saves a single PNG.  No local data file required: the script
 reads the public Cloud-Optimized GeoTIFF directly over HTTPS, fetching only
 the pre-built overview level at the requested downsample factor.
 
+Background imagery
+------------------
+By default the script uses Cartopy's built-in Natural Earth shaded-relief
+image (``ax.stock_img()``) as the base layer, visible in the polar regions
+that lie outside the LCM-10 coverage extent (60°S – 83°N).
+
+To use a custom background COG instead, set ``BG_COG_URL`` to an HTTPS URL
+or local path pointing to a 3-band (RGB) uint8, EPSG:4326 GeoTIFF.  The same
+overview-first / mode-fallback logic is applied.  A suitable source is the
+Natural Earth 2 raster (https://www.naturalearthdata.com/downloads/10m-raster-data/10m-natural-earth-2/)
+after converting to COG with ``gdal_translate -of COG``.
+
 Dependencies (add to pyproject.toml):
-    cartopy>=0.23  rasterio  matplotlib  numpy
+    cartopy>=0.23  rasterio  matplotlib  numpy  scipy
 
 Usage::
 
@@ -50,6 +62,18 @@ COG_URL = (
 # and Resampling.mode (majority vote) is used as fallback.
 # Factor 8  → ~4 500 × 1 784 px — sufficient for 300 DPI output.
 DOWNSAMPLE_FACTOR: int = 8
+
+# ---------------------------------------------------------------------------
+# Background imagery
+# ---------------------------------------------------------------------------
+# Optional RGB COG for the base layer rendered below the LCM-10 data.
+# None → use Cartopy's built-in Natural Earth stock image (ax.stock_img()).
+# Set to an HTTPS URL or local path to override with a custom COG, e.g.:
+#   BG_COG_URL = "/data/NE2_LR_LC_SR_W.tif"   (Natural Earth 2 as local COG)
+BG_COG_URL: str | None = None
+BG_DOWNSAMPLE_FACTOR: int = 8
+
+# ---------------------------------------------------------------------------
 
 OUTPUT_PATH = Path("dual_globe.png")
 
@@ -127,12 +151,51 @@ def apply_colormap(
     return rgba
 
 
-def load_data(cog_url: str, downsample: int) -> np.ndarray:
-    """Open the COG and return an RGBA (H, W, 4) uint8 array.
+def _read_overview(src: rasterio.DatasetReader, downsample: int,
+                   resampling_fallback: Resampling,
+                   bands: list[int] | None = None) -> np.ndarray:
+    """Read ``src`` at 1/``downsample`` resolution, preferring a COG overview.
 
-    Reads a pre-built overview level when ``downsample`` exactly matches one
-    of the COG's overview decimation factors.  Falls back to Resampling.mode
-    with a warning otherwise.
+    If ``downsample`` exactly matches a pre-built overview level the data is
+    returned without any resampling.  Otherwise ``resampling_fallback`` is
+    applied and a :class:`UserWarning` is emitted.
+
+    Args:
+        src: Open rasterio dataset.
+        downsample: Integer decimation factor.
+        resampling_fallback: Resampling algorithm used when no exact overview
+            match is found.
+        bands: 1-based list of band indices to read.  ``None`` = all bands.
+
+    Returns:
+        Numpy array of shape ``(bands, H/downsample, W/downsample)``.
+    """
+    overviews = src.overviews(1)
+    ov_h = src.height // downsample
+    ov_w = src.width  // downsample
+    kwargs: dict = {}
+    if bands is not None:
+        kwargs["indexes"] = bands
+    target_shape = (len(bands) if bands else src.count, ov_h, ov_w)
+
+    if downsample in overviews:
+        print(f"  reading overview ×{downsample} ({ov_w} × {ov_h}) — no resampling")
+        return src.read(out_shape=target_shape, **kwargs)
+
+    warnings.warn(
+        f"No COG overview at factor {downsample}. "
+        f"Available: {overviews}. "
+        f"Falling back to {resampling_fallback.name} resampling.",
+        stacklevel=3,
+    )
+    return src.read(out_shape=target_shape, resampling=resampling_fallback, **kwargs)
+
+
+def load_data(cog_url: str, downsample: int) -> np.ndarray:
+    """Open the LCM-10 COG and return an RGBA (H, W, 4) uint8 array.
+
+    Uses ``Resampling.mode`` as fallback (majority vote — correct for
+    categorical data).
 
     Args:
         cog_url: HTTPS URL or local path to the Cloud-Optimized GeoTIFF.
@@ -141,35 +204,43 @@ def load_data(cog_url: str, downsample: int) -> np.ndarray:
     Returns:
         RGBA array ready for ``ax.imshow``.
     """
-    print(f"Opening COG: {cog_url}")
+    print(f"Opening LCM-10 COG: {cog_url}")
     with rasterio.open(cog_url) as src:
-        overviews = src.overviews(1)  # decimation factors, e.g. [2, 4, 8, 16]
         print(f"  native size : {src.width} × {src.height}")
-        print(f"  overviews   : {overviews}")
+        print(f"  overviews   : {src.overviews(1)}")
+        data = _read_overview(src, downsample, Resampling.mode)
 
-        ov_h = src.height // downsample
-        ov_w = src.width  // downsample
-        target_shape = (src.count, ov_h, ov_w)
-
-        if downsample in overviews:
-            print(f"  reading overview ×{downsample} ({ov_w} × {ov_h}) — no resampling")
-            data = src.read(out_shape=target_shape)
-        else:
-            warnings.warn(
-                f"No COG overview at factor {downsample}. "
-                f"Available: {overviews}. "
-                "Falling back to MODE resampling (slow for large files).",
-                stacklevel=2,
-            )
-            data = src.read(out_shape=target_shape, resampling=Resampling.mode)
-
-    band      = data[0]                          # categorical land cover (uint8)
+    band       = data[0]
     alpha_band = data[1] if data.shape[0] > 1 else np.full_like(band, 255)
 
-    print(f"  applying colormap ...")
+    print("  applying colormap ...")
     rgba = apply_colormap(band, alpha_band, COLORMAP_HEX)
     print(f"  done — RGBA shape {rgba.shape}")
     return rgba
+
+
+def load_background(cog_url: str, downsample: int) -> np.ndarray:
+    """Open a background imagery COG and return an (H, W, 3) uint8 RGB array.
+
+    Reads only the first three bands (R, G, B).  Uses ``Resampling.bilinear``
+    as fallback, which is appropriate for continuous imagery.
+
+    Args:
+        cog_url: HTTPS URL or local path to a 3-band uint8 EPSG:4326 COG.
+        downsample: Integer decimation factor.
+
+    Returns:
+        RGB array of shape (H, W, 3), dtype uint8, ready for ``ax.imshow``.
+    """
+    print(f"Opening background COG: {cog_url}")
+    with rasterio.open(cog_url) as src:
+        print(f"  native size : {src.width} × {src.height}")
+        print(f"  overviews   : {src.overviews(1)}")
+        data = _read_overview(src, downsample, Resampling.bilinear, bands=[1, 2, 3])
+
+    rgb = np.moveaxis(data, 0, -1)  # (3, H, W) → (H, W, 3)
+    print(f"  done — RGB shape {rgb.shape}")
+    return rgb
 
 
 def build_figure(
@@ -180,6 +251,7 @@ def build_figure(
     fig_h: float,
     coastline_color: str,
     coastline_width: float,
+    bg_rgb: np.ndarray | None = None,
 ) -> plt.Figure:
     """Compose the multi-panel globe figure.
 
@@ -191,6 +263,8 @@ def build_figure(
         fig_h: Figure height in inches.
         coastline_color: Edge colour for coastline features.
         coastline_width: Line width for coastline features.
+        bg_rgb: Optional (H, W, 3) uint8 RGB background imagery.  ``None``
+            → use Cartopy's built-in Natural Earth stock image instead.
 
     Returns:
         Configured :class:`matplotlib.figure.Figure`.
@@ -198,7 +272,7 @@ def build_figure(
     n = len(globe_centers)
     fig_w = fig_w_per_globe * n
 
-    # Background colour for the figure and axes.
+    # Background colour for the figure canvas and axes face.
     if background == "transparent":
         bg_rgba = (0.0, 0.0, 0.0, 0.0)
     elif background == "white":
@@ -213,9 +287,23 @@ def build_figure(
         ax = fig.add_subplot(1, n, i + 1, projection=proj)
         ax.set_facecolor(bg_rgba)
 
-        # Render the land cover raster.  The full equirectangular extent is
-        # [-180, 180] west→east and [-90, 90] south→north (origin='upper'
-        # because the array rows run north→south).
+        # --- Base / background layer (zorder 0) ----------------------------
+        if bg_rgb is not None:
+            ax.imshow(
+                bg_rgb,
+                origin="upper",
+                extent=[-180, 180, -90, 90],
+                transform=ccrs.PlateCarree(),
+                interpolation="bilinear",
+                zorder=0,
+            )
+        else:
+            # Cartopy's built-in Natural Earth shaded-relief image.
+            ax.stock_img()
+
+        # --- LCM-10 land cover overlay (zorder 1) --------------------------
+        # No-data pixels (alpha=0) are transparent, letting the background
+        # show through in areas outside the LCM-10 coverage extent.
         ax.imshow(
             rgba,
             origin="upper",
@@ -225,6 +313,7 @@ def build_figure(
             zorder=1,
         )
 
+        # --- Coastlines (zorder 2) -----------------------------------------
         ax.add_feature(
             cfeature.COASTLINE,
             linewidth=coastline_width,
@@ -241,12 +330,17 @@ def build_figure(
 def main() -> None:
     rgba = load_data(COG_URL, DOWNSAMPLE_FACTOR)
 
+    bg_rgb: np.ndarray | None = None
+    if BG_COG_URL:
+        bg_rgb = load_background(BG_COG_URL, BG_DOWNSAMPLE_FACTOR)
+
     if len(GLOBE_CENTERS) != N_GLOBES:
         raise ValueError(
             f"N_GLOBES={N_GLOBES} but GLOBE_CENTERS has {len(GLOBE_CENTERS)} entries."
         )
 
-    print(f"Building {N_GLOBES}-globe figure (background={BACKGROUND!r}) ...")
+    bg_label = BG_COG_URL or "stock_img"
+    print(f"Building {N_GLOBES}-globe figure (background={BACKGROUND!r}, base={bg_label}) ...")
     fig = build_figure(
         rgba=rgba,
         globe_centers=GLOBE_CENTERS,
@@ -255,6 +349,7 @@ def main() -> None:
         fig_h=FIG_HEIGHT,
         coastline_color=COASTLINE_COLOR,
         coastline_width=COASTLINE_WIDTH,
+        bg_rgb=bg_rgb,
     )
 
     transparent = BACKGROUND == "transparent"
