@@ -87,10 +87,11 @@ BACKGROUND = "black"
 N_GLOBES = 2
 
 # (central_longitude, central_latitude) for each globe panel.
-# 2-globe default: Western Hemisphere + Eastern Hemisphere.
-GLOBE_CENTERS: list[tuple[float, float]] = [(-90.0, 0.0), (20.0, 0.0)]
-# For a 3-globe layout emphasising Asia/Oceania, use:
-#   GLOBE_CENTERS = [(-100.0, 0.0), (20.0, 0.0), (110.0, 0.0)]
+# 2-globe default: Western Hemisphere + Eastern Hemisphere, tilted north
+# to emphasise the vegetated / populated mid-latitudes.
+GLOBE_CENTERS: list[tuple[float, float]] = [(-90.0, 30.0), (30.0, 25.0)]
+# 3-globe layout (set N_GLOBES = 3 to use):
+#   GLOBE_CENTERS = [(-100.0, 35.0), (20.0, 30.0), (110.0, 25.0)]
 
 COASTLINE_COLOR = "white"   # set to "black" for light backgrounds
 COASTLINE_WIDTH = 0.4
