@@ -70,7 +70,10 @@ DOWNSAMPLE_FACTOR: int = 8
 # None → use Cartopy's built-in Natural Earth stock image (ax.stock_img()).
 # Set to an HTTPS URL or local path to override with a custom COG, e.g.:
 #   BG_COG_URL = "/data/NE2_LR_LC_SR_W.tif"   (Natural Earth 2 as local COG)
-BG_COG_URL: str | None = None
+BG_COG_URL: str | None = (
+    "https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/"
+    "world_topo_bathy_200407_WGS84.tif"
+)
 BG_DOWNSAMPLE_FACTOR: int = 8
 
 # ---------------------------------------------------------------------------
