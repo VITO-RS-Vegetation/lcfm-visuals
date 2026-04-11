@@ -190,9 +190,8 @@
   <script>
     // ── Ion token ─────────────────────────────────────────────────────────────
     // We use no Cesium ion-hosted assets (all data comes from USGS, CloudFerro,
-    // and GitHub). An empty string suppresses the API call; set a real token
-    // from cesium.com/ion (free) to also suppress the console warning.
-    Cesium.Ion.defaultAccessToken = '';
+    // and GitHub). Token is from cesium.com/ion and suppresses the console warning.
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjYmIzNGI0NS00ZGNlLTRhOTUtOGZhOS0zN2ExZmRiMmQwMGEiLCJpZCI6NDE2OTI1LCJpYXQiOjE3NzU5NDM1OTh9.zC3DwhhBMf16BbRa3YHatIV6whmFG63JFblUrcQ9WBo';
 
     // ── LCM-10 COG URL (public S3, HTTP range-requests confirmed working) ─────
     const COG_URL = encodeURIComponent(
