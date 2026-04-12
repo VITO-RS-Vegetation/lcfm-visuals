@@ -28,3 +28,16 @@ Preview: https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/32ba1b1f8c.../h
 
 - GitHack serves raw GitHub files with correct MIME types (unlike `raw.githubusercontent.com`), making HTML files render properly in the browser.
 - Using the commit SHA instead of a branch name (`main`) bypasses GitHack's CDN cache, ensuring the preview always reflects the exact committed state.
+
+---
+
+## Plans folder (`plans/`)
+
+Reference documents, design decisions, and data specifications for this project. Table of contents:
+
+| File | Summary |
+|---|---|
+| [`data.md`](plans/data.md) | Data sources reference: COG specs, asset URLs, colormap, and titiler tiling config for LCM-10, Blue Marble WMS, and Natural Earth country borders. |
+| [`GLOBE_VIZ_PLAN.md`](plans/GLOBE_VIZ_PLAN.md) | Implementation plan for the interactive rotatable globe built with MapLibre GL JS (`html/globe_maplibre.html`). |
+| [`GLOBE_VIZ_CESIUM.md`](plans/GLOBE_VIZ_CESIUM.md) | Implementation plan for an equivalent interactive 3D globe built with CesiumJS, mirroring the MapLibre version in features and UI. |
+| [`lcm10_enhancements.md`](plans/lcm10_enhancements.md) | Planned enhancements to the LCM-10 visualisation layer (higher-resolution tiles, etc.). |
