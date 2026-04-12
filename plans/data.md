@@ -94,6 +94,7 @@ The S3/CloudFerro URL is used in production.
 | Band 1 | MAP — uint8, categorical land cover class |
 | Band 2 | Alpha mask |
 | No-data value | 255 (fully transparent; distinct from class 254 = Unclassifiable) |
+| Resampling method | **mode** — required for categorical data; nearest-neighbour or averaging would corrupt class values |
 | License | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Attribution | © VITO 2026. European Union's Copernicus Land Monitoring Service information. [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
