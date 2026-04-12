@@ -224,7 +224,8 @@
       + `?url=${COG_URL}`
       + '&bidx=1'
       + `&colormap=${COLORMAP}`
-      + '&tilesize=512';
+      + '&tilesize=1024'
+      + '&resampling=mode';
 
     // ── Blue Marble — USGS WMS 1.3.0, CRS=EPSG:3857 ──
     // WMS 1.3.0 uses CRS= (instead of SRS= in 1.1.x) and {bbox-epsg-3857}
@@ -287,6 +288,7 @@
         type: 'raster',
         tiles: [LCM10_TILES],
         tileSize: 512,
+        maxzoom: 13,
         attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
       });
       map.addLayer({
