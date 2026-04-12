@@ -33,7 +33,7 @@ Preview: https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/32ba1b1f8c.../h
 
 ## Plans folder (`plans/`)
 
-Reference documents, design decisions, and data specifications for this project.
+Reference documents, design decisions, and data specifications for this project. Table of contents:
 
 | File | Summary |
 |---|---|

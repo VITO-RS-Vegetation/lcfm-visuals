@@ -1,6 +1,6 @@
 # lcfm_globe
 
-PyVista-based tooling for the LCFM & SEN4LDN projects.
+Interactive globe visualizations and scripts for the LCFM & SEN4LDN projects.
 
 ## Interactive Globe — LCM-10 MapLibre viewer
 
@@ -16,7 +16,7 @@ Open directly in a browser via GitHack (no build step required):
 > ```
 > Get the SHA with `git rev-parse HEAD`.
 
-See `plans/GLOBE_VIZ_PLAN.md` for implementation details and design decisions.
+See [`plans/GLOBE_VIZ_PLAN.md`](plans/GLOBE_VIZ_PLAN.md) for implementation details and design decisions.
 
 ## Interactive Globe — LCM-10 CesiumJS viewer
 
@@ -32,7 +32,20 @@ Open directly in a browser via GitHack (no build step required):
 > ```
 > Get the SHA with `git rev-parse HEAD`.
 
-See `plans/GLOBE_VIZ_CESIUM.md` for implementation details and design decisions.
+See [`plans/GLOBE_VIZ_CESIUM.md`](plans/GLOBE_VIZ_CESIUM.md) for implementation details and design decisions.
+
+---
+
+## Plans
+
+Reference documents, design decisions, and data specifications.
+
+| File | Summary |
+|---|---|
+| [`plans/data.md`](plans/data.md) | Data sources reference: COG specs, asset URLs, colormap, and titiler tiling config for LCM-10, Blue Marble WMS, and Natural Earth country borders. |
+| [`plans/GLOBE_VIZ_PLAN.md`](plans/GLOBE_VIZ_PLAN.md) | Implementation plan for the interactive rotatable globe built with MapLibre GL JS. |
+| [`plans/GLOBE_VIZ_CESIUM.md`](plans/GLOBE_VIZ_CESIUM.md) | Implementation plan for the equivalent interactive 3D globe built with CesiumJS. |
+| [`plans/lcm10_enhancements.md`](plans/lcm10_enhancements.md) | Planned enhancements to the LCM-10 visualisation layer (higher-resolution tiles, etc.). |
 
 ---
 
