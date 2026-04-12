@@ -93,13 +93,16 @@ map.on('load', () => {
 
   // Layer 2: LCM-10 MAP (foreground)
   // COG_URL and COLORMAP constants — see data.md §2
+  // tilesize=512 matches the COG block size (512 px) → 1 block read per tile;
+  // also causes titiler to select a finer overview at low zoom (4× more pixel data
+  // than tilesize=256). See data.md §2 "Tile size" for details.
   map.addSource('lcm10', {
     type: 'raster',
     tiles: [
       `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}`
-      + `?url=${COG_URL}&bidx=1&colormap=${COLORMAP}`,
+      + `?url=${COG_URL}&bidx=1&colormap=${COLORMAP}&tilesize=512`,
     ],
-    tileSize: 256,
+    tileSize: 512,
     attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
   });
   map.addLayer({ id: 'lcm10', type: 'raster', source: 'lcm10',

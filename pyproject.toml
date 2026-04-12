@@ -12,10 +12,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    "cartopy>=0.23",
     "imageio>=2.37.2",
     "imageio-ffmpeg>=0.6.0",
     "pyvista>=0.47.1",
     "rasterio>=1.4.4",
+    "scipy>=1.10",
 ]
 
 [dependency-groups]
