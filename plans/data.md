@@ -89,7 +89,7 @@ The S3/CloudFerro URL is used in production.
 | CRS | EPSG:4326 |
 | Size | 36 000 × 14 275 px |
 | Coverage | 180°W–180°E, 60°S–83°N |
-| Block size | 512 × 512 px |
+| Block size | 1024 × 1024 px |
 | Overviews | 2, 4, 8, 16, 32, 64, 128 |
 | Band 1 | MAP — uint8, categorical land cover class |
 | Band 2 | Alpha mask |
@@ -122,7 +122,15 @@ The S3/CloudFerro URL is used in production.
 
 #### Tile size
 
-Use `&tilesize=512` in the tile URL and `tileSize: 512` in the MapLibre source config. The COG block size is 512 px, so each titiler tile request reads exactly one COG block at the appropriate overview level — minimising S3 range requests. At z=1 this also causes titiler to select overview 32 (1 125 px) rather than overview 64 (562 px), providing 4× the pixel data per tile compared to tilesize=256.
+Use `&tilesize=1024` in the tile URL and `tileSize: 512` in the MapLibre source config (and `tileWidth/Height: 512` in Cesium). This intentional mismatch is the best visual configuration:
+
+- **`tilesize=1024` (URL):** titiler returns 1024 px tiles. At each tile zoom level, titiler selects a **2× finer COG overview** than it would with `tilesize=512` — doubling the source data per tile.
+- **`tileSize: 512` (renderer):** MapLibre/Cesium request tiles at the standard z−1 zoom level (as if tiles were 512 px), then render the 1024 px tile into a 512 px CSS slot. The 2:1 GPU bilinear downsampling produces smooth colour transitions at class boundaries, which at globe/continental zoom levels looks visually better than hard-edged nearest-neighbour sampling.
+- **`resampling=mode` (URL):** titiler uses mode resampling when reading the COG, ensuring the dominant categorical class value wins in each output pixel before the colormap is applied. This is correct for the COG's integer class data and consistent with how the COG overviews were built.
+
+The COG block size is 1024 px, so titiler reads approximately 1–2 COG blocks per tile request (efficient S3 access). The overview pyramid (×2…×128) is identical to a 512-block COG — the block size only affects read efficiency, not overview coverage.
+
+Source density at any given display zoom level: ~2× more COG data per CSS pixel compared to the matched `tilesize=512 / tileSize=512` baseline.
 
 #### Band selection
 
@@ -151,7 +159,7 @@ const COLORMAP = encodeURIComponent(JSON.stringify({
 }));
 
 // XYZ tile URL template:
-`https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${COG_URL}&bidx=1&colormap=${COLORMAP}&tilesize=512`
+`https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}?url=${COG_URL}&bidx=1&colormap=${COLORMAP}&tilesize=1024&resampling=mode`
 ```
 
 Verify COG access:
