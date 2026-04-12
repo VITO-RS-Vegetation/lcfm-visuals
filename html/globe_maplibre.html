@@ -263,6 +263,7 @@
       },
       center: [10, 30],
       zoom: 1.5,
+      hash: true,   // sync position to URL hash → shareable links (#zoom/lat/lng)
     });
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
