@@ -89,9 +89,9 @@ N_GLOBES = 2
 # (central_longitude, central_latitude) for each globe panel.
 # 2-globe default: Western Hemisphere + Eastern Hemisphere, tilted north
 # to emphasise the vegetated / populated mid-latitudes.
-GLOBE_CENTERS: list[tuple[float, float]] = [(-90.0, 15.0), (30.0, 25.0)]
+GLOBE_CENTERS: list[tuple[float, float]] = [(-95.0, 15.0), (45.0, 25.0)]
 # 3-globe layout (set N_GLOBES = 3 to use):
-#   GLOBE_CENTERS = [(-90.0, 15.0), (20.0, 30.0), (110.0, 25.0)]
+#   GLOBE_CENTERS = [(-95.0, 15.0), (20.0, 15.0), (110.0, 15.0)]
 
 COASTLINE_COLOR = "white"   # set to "black" for light backgrounds
 COASTLINE_WIDTH = 0.4
@@ -342,7 +342,7 @@ def build_figure(
 
         ax.set_global()
 
-    fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0.02)
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0.08)
     return fig
 
 
