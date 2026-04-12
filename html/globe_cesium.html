@@ -314,12 +314,16 @@
     // WebMercatorQuad tiles. Without it, Cesium defaults to GeographicTilingScheme
     // and assigns wrong lat/lon extents to each tile, placing them in the wrong
     // location on the globe.
-    viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+    // Capture the returned ImageryLayer to set NEAREST texture filtering.
+    // This prevents WebGL bilinear minification from blending adjacent
+    // categorical class colours when the 1024px tile is rendered into a
+    // 512px tile slot (2:1 oversampling).
+    const lcm10Layer = viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
       url: `https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}`
          + `?url=${COG_URL}&bidx=1&colormap=${COLORMAP}&tilesize=1024&resampling=mode`,
       tilingScheme: new Cesium.WebMercatorTilingScheme(),
-      tileWidth:    1024,
-      tileHeight:   1024,
+      tileWidth:    512,
+      tileHeight:   512,
       minimumLevel: 0,
       maximumLevel: 12,  // COG overviews go to ~zoom 12; avoids 404s at high zoom
       credit: new Cesium.Credit(
@@ -328,6 +332,8 @@
         true,
       ),
     }));
+    lcm10Layer.minificationFilter  = Cesium.TextureMinificationFilter.NEAREST;
+    lcm10Layer.magnificationFilter = Cesium.TextureMagnificationFilter.NEAREST;
 
     // ── Layer 3: Country borders (Natural Earth 50m GeoJSON) ──────────────────
     // GeoJsonDataSource converts polygon/multipolygon features to entities.
