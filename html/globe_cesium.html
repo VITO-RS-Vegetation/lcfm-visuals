@@ -290,16 +290,18 @@
       var canvas = document.createElement('canvas');
       canvas.width = 2; canvas.height = 2;
       var ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#06112c';
+      ctx.fillStyle = '#0f2144';   // sampled from USGS WMS ocean at ~83–85°N
       ctx.fillRect(0, 0, 2, 2);
       var url = canvas.toDataURL('image/png');
+      // Boundary at 83° (not 85.05°) to overlap into the WMS tile that contains
+      // the sliver, so the cap fully covers the blank portion.
       viewer.imageryLayers.addImageryProvider(new Cesium.SingleTileImageryProvider({
         url:       url,
-        rectangle: Cesium.Rectangle.fromDegrees(-180,  85.05113, 180,  90),
+        rectangle: Cesium.Rectangle.fromDegrees(-180,  83, 180,  90),
       }));
       viewer.imageryLayers.addImageryProvider(new Cesium.SingleTileImageryProvider({
         url:       url,
-        rectangle: Cesium.Rectangle.fromDegrees(-180, -90,       180, -85.05113),
+        rectangle: Cesium.Rectangle.fromDegrees(-180, -90, 180, -83),
       }));
     })();
 
