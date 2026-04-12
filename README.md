@@ -22,7 +22,7 @@ See `plans/GLOBE_VIZ_PLAN.md` for implementation details and design decisions.
 
 ## Scripts
 
-### `scripts/ortho_globes.py` — static orthographic globe image (PNG)
+### `scripts/globe_ortho.py` — static orthographic globe image (PNG)
 
 Renders the LCM-10 land cover map across 2 or 3 orthographic globe panels
 side-by-side using Cartopy + Matplotlib and saves a single PNG.  Reads both
@@ -40,7 +40,7 @@ Key config at the top of the script:
 | `DPI` | `300` | Output resolution |
 
 ```bash
-GDAL_HTTP_UNSAFESSL=YES python scripts/ortho_globes.py
+GDAL_HTTP_UNSAFESSL=YES python scripts/globe_ortho.py
 ```
 
 Dependencies: `cartopy rasterio matplotlib numpy scipy`
