@@ -287,7 +287,7 @@
       map.addSource('lcm10', {
         type: 'raster',
         tiles: [LCM10_TILES],
-        tileSize: 512,
+        tileSize: 1024,
         maxzoom: 13,
         attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
       });
@@ -295,13 +295,7 @@
         id: 'lcm10',
         type: 'raster',
         source: 'lcm10',
-        paint: {
-          'raster-opacity': 1.0,
-          // NEAREST sampling: prevents WebGL bilinear filtering from blending
-          // adjacent categorical class colours when the 1024px tile is
-          // minified into a 512px CSS slot (2:1 oversampling).
-          'raster-resampling': 'nearest',
-        },
+        paint: { 'raster-opacity': 1.0 },
       });
 
       // ── Layer 3: Country borders (Natural Earth 50m) ──
