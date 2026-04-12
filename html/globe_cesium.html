@@ -244,7 +244,6 @@
     viewer.scene.globe.enableLighting       = false; // day/night terminator
     viewer.scene.fog.enabled                = false;
     viewer.scene.backgroundColor            = Cesium.Color.BLACK;
-    viewer.scene.globe.baseColor            = Cesium.Color.fromCssColorString('#06112c'); // polar fill
 
     // ── Initial camera position ────────────────────────────────────────────────
     // lon:10, lat:30, height ~15,000 km ≈ MapLibre center:[10,30] zoom:1.5
@@ -277,12 +276,32 @@
         TRANSPARENT: 'false',
         STYLES:      '',
       },
-      // Restrict to Web Mercator coverage (~±85.05°). The WMS returns opaque
-      // blank tiles beyond this latitude, which would overwrite globe.baseColor.
-      // Cesium skips tile requests outside this rectangle, exposing the base color.
-      rectangle: Cesium.Rectangle.fromDegrees(-180, -85.05113, 180, 85.05113),
       credit: new Cesium.Credit('© USGS'),
     }));
+
+    // ── Polar cap fill ────────────────────────────────────────────────────────
+    // The USGS WMS tile grid covers the full sphere and returns opaque blank
+    // tiles for latitudes beyond its imagery (~±85°). Restricting the WMS
+    // rectangle alone does not prevent those tiles from rendering. Instead, a
+    // solid-colour single-tile layer is placed on top of the WMS for each polar
+    // cap. LCM-10 (layer above) is fully transparent at the poles, so the cap
+    // colour shows through.
+    (function () {
+      var canvas = document.createElement('canvas');
+      canvas.width = 2; canvas.height = 2;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#06112c';
+      ctx.fillRect(0, 0, 2, 2);
+      var url = canvas.toDataURL('image/png');
+      viewer.imageryLayers.addImageryProvider(new Cesium.SingleTileImageryProvider({
+        url:       url,
+        rectangle: Cesium.Rectangle.fromDegrees(-180,  85.05113, 180,  90),
+      }));
+      viewer.imageryLayers.addImageryProvider(new Cesium.SingleTileImageryProvider({
+        url:       url,
+        rectangle: Cesium.Rectangle.fromDegrees(-180, -90,       180, -85.05113),
+      }));
+    })();
 
     // ── Layer 2: LCM-10 land cover (titiler XYZ tiles) ────────────────────────
     // Use {y} (not {reverseY}): Cesium's {y} means Y=0 at the north (XYZ/slippy
