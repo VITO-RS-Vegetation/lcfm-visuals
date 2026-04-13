@@ -67,10 +67,11 @@ Key config at the top of the script:
 | `BACKGROUND` | `"black"` | `"black"`, `"white"`, or `"transparent"` |
 | `DOWNSAMPLE_FACTOR` | `8` | COG overview level to read (must match an existing overview) |
 | `DPI` | `300` | Output resolution |
-| `CUTLINE_LAT` | `None` | Latitude of horizontal cut; `None` = full circle. Everything below is clipped, producing a "cut figure" with a flat bottom edge. |
+| `COASTLINES` | `True` | Draw coastline outlines |
 | `COUNTRY_BORDERS` | `False` | Draw country border lines |
-| `COUNTRY_BORDER_COLOR` | `"white"` | Colour for country borders |
-| `COUNTRY_BORDER_WIDTH` | `0.3` | Line width for country borders |
+| `BORDER_COLOR` | `"white"` | Shared colour for coastlines and country borders |
+| `BORDER_WIDTH` | `0.4` | Shared line width for coastlines and country borders |
+| `CUTLINE_LAT` | `None` | Latitude of horizontal cut; `None` = full circle. Everything below is clipped, producing a "cut figure" with a flat bottom edge. |
 
 ```bash
 GDAL_HTTP_UNSAFESSL=YES python scripts/orthographic_globe.py

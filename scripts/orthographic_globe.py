@@ -109,8 +109,13 @@ GLOBE_CENTERS: list[tuple[float, float]] = [(-90.0, 15.0), (60.0, 25.0)]
 # 3-globe layout (set N_GLOBES = 3 to use):
 #   GLOBE_CENTERS = [(-90.0, 15.0), (20.0, 30.0), (110.0, 20.0)]
 
-COASTLINE_COLOR = "white"   # set to "black" for light backgrounds
-COASTLINE_WIDTH = 0.4
+# ---------------------------------------------------------------------------
+# Coastlines and country borders
+# ---------------------------------------------------------------------------
+COASTLINES: bool = True
+COUNTRY_BORDERS: bool = False
+BORDER_COLOR: str = "white"   # set to "black" for light backgrounds
+BORDER_WIDTH: float = 0.4
 
 # ---------------------------------------------------------------------------
 # Cutline — horizontal cut figure
@@ -120,13 +125,6 @@ COASTLINE_WIDTH = 0.4
 # The cut is computed at each globe's central longitude and is always
 # visually straight in the output image.  None = full circle (no cut).
 CUTLINE_LAT: float | None = None
-
-# ---------------------------------------------------------------------------
-# Country borders
-# ---------------------------------------------------------------------------
-COUNTRY_BORDERS: bool = False
-COUNTRY_BORDER_COLOR: str = "white"   # set to "black" for light backgrounds
-COUNTRY_BORDER_WIDTH: float = 0.3
 
 DPI = 300
 FIG_WIDTH_PER_GLOBE = 7.0   # inches; total figure width = N_GLOBES × this
@@ -295,14 +293,13 @@ def build_figure(
     background: str,
     fig_w_per_globe: float,
     fig_h: float,
-    coastline_color: str,
-    coastline_width: float,
     bg_rgb: np.ndarray | None = None,
     bg_extent: list[float] | None = None,
-    cutline_lat: float | None = None,
+    coastlines: bool = True,
     country_borders: bool = False,
-    country_border_color: str = "white",
-    country_border_width: float = 0.3,
+    border_color: str = "white",
+    border_width: float = 0.4,
+    cutline_lat: float | None = None,
 ) -> plt.Figure:
     """Compose the multi-panel globe figure.
 
@@ -314,20 +311,19 @@ def build_figure(
         background: ``"black"``, ``"white"``, or ``"transparent"``.
         fig_w_per_globe: Width per globe panel in inches.
         fig_h: Figure height in inches.
-        coastline_color: Edge colour for coastline features.
-        coastline_width: Line width for coastline features.
         bg_rgb: Optional (H, W, 3) uint8 RGB background imagery.  ``None``
             → use Cartopy's built-in Natural Earth stock image instead.
         bg_extent: ``[left, right, bottom, top]`` for ``bg_rgb``.  Ignored
             when ``bg_rgb`` is ``None``.
+        coastlines: When ``True``, draw coastline outlines.
+        country_borders: When ``True``, overlay country borders from Cartopy's
+            built-in Natural Earth data.
+        border_color: Shared edge colour for coastlines and country borders.
+        border_width: Shared line width for coastlines and country borders.
         cutline_lat: Latitude (degrees) at which to horizontally clip each
             globe, creating a "cut figure" with a flat bottom edge.  The
             y-position of the cut is exact at the globe's central longitude.
             ``None`` = full circle (no clip).
-        country_borders: When ``True``, overlay country borders from Cartopy's
-            built-in Natural Earth data.
-        country_border_color: Edge colour for country borders.
-        country_border_width: Line width for country borders.
 
     Returns:
         Configured :class:`matplotlib.figure.Figure`.
@@ -376,20 +372,19 @@ def build_figure(
             zorder=1,
         )
 
-        # --- Coastlines (zorder 2) -----------------------------------------
-        ax.add_feature(
-            cfeature.COASTLINE,
-            linewidth=coastline_width,
-            edgecolor=coastline_color,
-            zorder=2,
-        )
-
-        # --- Country borders (zorder 2) ------------------------------------
+        # --- Coastlines and country borders (zorder 2) ---------------------
+        if coastlines:
+            ax.add_feature(
+                cfeature.COASTLINE,
+                linewidth=border_width,
+                edgecolor=border_color,
+                zorder=2,
+            )
         if country_borders:
             ax.add_feature(
                 cfeature.BORDERS,
-                linewidth=country_border_width,
-                edgecolor=country_border_color,
+                linewidth=border_width,
+                edgecolor=border_color,
                 facecolor="none",
                 zorder=2,
             )
@@ -440,14 +435,13 @@ def main() -> None:
         background=BACKGROUND,
         fig_w_per_globe=FIG_WIDTH_PER_GLOBE,
         fig_h=FIG_HEIGHT,
-        coastline_color=COASTLINE_COLOR,
-        coastline_width=COASTLINE_WIDTH,
         bg_rgb=bg_rgb,
         bg_extent=bg_extent,
-        cutline_lat=CUTLINE_LAT,
+        coastlines=COASTLINES,
         country_borders=COUNTRY_BORDERS,
-        country_border_color=COUNTRY_BORDER_COLOR,
-        country_border_width=COUNTRY_BORDER_WIDTH,
+        border_color=BORDER_COLOR,
+        border_width=BORDER_WIDTH,
+        cutline_lat=CUTLINE_LAT,
     )
 
     transparent = BACKGROUND == "transparent"
