@@ -244,6 +244,7 @@
     const map = new maplibregl.Map({
       container: 'map',
       attributionControl: false,   // added manually below with compact:true
+      hash: true,                  // syncs #zoom/lat/lng/bearing/pitch to URL
       style: {
         version: 8,
         projection: { type: 'globe' },   // MapLibre GL JS v5+
@@ -288,6 +289,7 @@
         type: 'raster',
         tiles: [LCM10_TILES],
         tileSize: 512,
+        maxzoom: 13,  // oversample zoom-13 tile beyond this; avoids titiler requests at native res
         attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
       });
       map.addLayer({
