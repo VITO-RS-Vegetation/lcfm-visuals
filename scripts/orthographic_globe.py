@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Static orthographic globe image using Cartopy + Matplotlib.
 
-Renders the LCM-10 land cover map across 2 (or 3) orthographic globe panels
+Renders the LCM-10 land cover map across 1, 2, or 3 orthographic globe panels
 side-by-side and saves a single PNG.  No local data file required: the script
 reads the public Cloud-Optimized GeoTIFF directly over HTTPS, fetching only
 the pre-built overview level at the requested downsample factor.
@@ -18,19 +18,32 @@ overview-first / mode-fallback logic is applied.  A suitable source is the
 Natural Earth 2 raster (https://www.naturalearthdata.com/downloads/10m-raster-data/10m-natural-earth-2/)
 after converting to COG with ``gdal_translate -of COG``.
 
+Cutline
+-------
+Set ``CUTLINE_LAT`` to a latitude (in degrees) to clip the globe to the
+portion above that latitude, producing a "cut figure" with a flat horizontal
+bottom edge — equivalent to cropping in an image editor.  The cut is computed
+at each globe's central longitude and is always visually straight in the output
+image regardless of the globe's tilt.
+
+Country borders
+---------------
+Set ``COUNTRY_BORDERS = True`` to overlay country outlines from Natural Earth
+(via Cartopy's built-in ``BORDERS`` feature).
+
 Dependencies (add to pyproject.toml):
     cartopy>=0.23  rasterio  matplotlib  numpy  scipy
 
 Usage::
 
-    python scripts/dual_globe.py
+    python scripts/orthographic_globe.py
 
-Outputs: dual_globe.png  (or the path set in OUTPUT_PATH)
+Outputs: orthographic_globe.png  (or the path set in OUTPUT_PATH)
 
 Note: if the remote COG server uses a self-signed certificate, GDAL will
 refuse the connection.  Work around it with::
 
-    GDAL_HTTP_UNSAFESSL=YES python scripts/dual_globe.py
+    GDAL_HTTP_UNSAFESSL=YES python scripts/orthographic_globe.py
 """
 
 from __future__ import annotations
@@ -40,6 +53,7 @@ from pathlib import Path
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import matplotlib.path as mpath
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
@@ -78,23 +92,39 @@ BG_DOWNSAMPLE_FACTOR: int = 8
 
 # ---------------------------------------------------------------------------
 
-OUTPUT_PATH = Path("dual_globe.png")
+OUTPUT_PATH = Path("orthographic_globe.png")
 
 # "black" | "white" | "transparent"
 BACKGROUND = "black"
 
-# Number of globe panels.  Either 2 or 3.
+# Number of globe panels.  1, 2, or 3.
 N_GLOBES = 2
 
 # (central_longitude, central_latitude) for each globe panel.
+# 1-globe example:
+#   GLOBE_CENTERS = [(20.0, 30.0)]
 # 2-globe default: Western Hemisphere + Eastern Hemisphere, tilted north
 # to emphasise the vegetated / populated mid-latitudes.
 GLOBE_CENTERS: list[tuple[float, float]] = [(-90.0, 15.0), (60.0, 25.0)]
 # 3-globe layout (set N_GLOBES = 3 to use):
 #   GLOBE_CENTERS = [(-90.0, 15.0), (20.0, 30.0), (110.0, 20.0)]
 
-COASTLINE_COLOR = "white"   # set to "black" for light backgrounds
-COASTLINE_WIDTH = 0.4
+# ---------------------------------------------------------------------------
+# Coastlines and country borders
+# ---------------------------------------------------------------------------
+COASTLINES: bool = True
+COUNTRY_BORDERS: bool = False
+BORDER_COLOR: str = "white"   # set to "black" for light backgrounds
+BORDER_WIDTH: float = 0.4
+
+# ---------------------------------------------------------------------------
+# Cutline — horizontal cut figure
+# ---------------------------------------------------------------------------
+# Latitude (degrees) at which to clip the globe.  Everything below this
+# latitude is hidden, producing a "cut figure" with a flat horizontal edge.
+# The cut is computed at each globe's central longitude and is always
+# visually straight in the output image.  None = full circle (no cut).
+CUTLINE_LAT: float | None = None
 
 DPI = 300
 FIG_WIDTH_PER_GLOBE = 7.0   # inches; total figure width = N_GLOBES × this
@@ -263,10 +293,13 @@ def build_figure(
     background: str,
     fig_w_per_globe: float,
     fig_h: float,
-    coastline_color: str,
-    coastline_width: float,
     bg_rgb: np.ndarray | None = None,
     bg_extent: list[float] | None = None,
+    coastlines: bool = True,
+    country_borders: bool = False,
+    border_color: str = "white",
+    border_width: float = 0.4,
+    cutline_lat: float | None = None,
 ) -> plt.Figure:
     """Compose the multi-panel globe figure.
 
@@ -278,12 +311,19 @@ def build_figure(
         background: ``"black"``, ``"white"``, or ``"transparent"``.
         fig_w_per_globe: Width per globe panel in inches.
         fig_h: Figure height in inches.
-        coastline_color: Edge colour for coastline features.
-        coastline_width: Line width for coastline features.
         bg_rgb: Optional (H, W, 3) uint8 RGB background imagery.  ``None``
             → use Cartopy's built-in Natural Earth stock image instead.
         bg_extent: ``[left, right, bottom, top]`` for ``bg_rgb``.  Ignored
             when ``bg_rgb`` is ``None``.
+        coastlines: When ``True``, draw coastline outlines.
+        country_borders: When ``True``, overlay country borders from Cartopy's
+            built-in Natural Earth data.
+        border_color: Shared edge colour for coastlines and country borders.
+        border_width: Shared line width for coastlines and country borders.
+        cutline_lat: Latitude (degrees) at which to horizontally clip each
+            globe, creating a "cut figure" with a flat bottom edge.  The
+            y-position of the cut is exact at the globe's central longitude.
+            ``None`` = full circle (no clip).
 
     Returns:
         Configured :class:`matplotlib.figure.Figure`.
@@ -332,15 +372,42 @@ def build_figure(
             zorder=1,
         )
 
-        # --- Coastlines (zorder 2) -----------------------------------------
-        ax.add_feature(
-            cfeature.COASTLINE,
-            linewidth=coastline_width,
-            edgecolor=coastline_color,
-            zorder=2,
-        )
+        # --- Coastlines and country borders (zorder 2) ---------------------
+        if coastlines:
+            ax.add_feature(
+                cfeature.COASTLINE,
+                linewidth=border_width,
+                edgecolor=border_color,
+                zorder=2,
+            )
+        if country_borders:
+            ax.add_feature(
+                cfeature.BORDERS,
+                linewidth=border_width,
+                edgecolor=border_color,
+                facecolor="none",
+                zorder=2,
+            )
 
         ax.set_global()
+
+        # --- Cutline — clip to upper cap (zorder applied by clipping) ------
+        if cutline_lat is not None:
+            # Compute the y-coordinate of cutline_lat in native orthographic
+            # metres at the globe's central longitude.
+            # For orthographic projection centred at (lon0, lat0):
+            #   y(lon0, lat) = R * sin(lat - lat0)
+            R = proj.globe.semimajor_axis
+            y_cut = float(np.clip(
+                R * np.sin(np.radians(cutline_lat - lat)),
+                -R * 0.9999, R * 0.9999,
+            ))
+            # Build a "cap" path: arc from right chord point over the top to
+            # the left chord point, closed by matplotlib with a straight chord.
+            angle = np.arcsin(y_cut / R)  # in [-pi/2, pi/2]
+            theta = np.linspace(angle, np.pi - angle, 300)
+            verts = np.column_stack([R * np.cos(theta), R * np.sin(theta)])
+            ax.set_boundary(mpath.Path(verts), transform=proj)
 
     fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0.08)
     return fig
@@ -368,10 +435,13 @@ def main() -> None:
         background=BACKGROUND,
         fig_w_per_globe=FIG_WIDTH_PER_GLOBE,
         fig_h=FIG_HEIGHT,
-        coastline_color=COASTLINE_COLOR,
-        coastline_width=COASTLINE_WIDTH,
         bg_rgb=bg_rgb,
         bg_extent=bg_extent,
+        coastlines=COASTLINES,
+        country_borders=COUNTRY_BORDERS,
+        border_color=BORDER_COLOR,
+        border_width=BORDER_WIDTH,
+        cutline_lat=CUTLINE_LAT,
     )
 
     transparent = BACKGROUND == "transparent"
