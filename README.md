@@ -51,9 +51,9 @@ Reference documents, design decisions, and data specifications.
 
 ## Scripts
 
-### `scripts/globe_ortho.py` — static orthographic globe image (PNG)
+### `scripts/orthographic_globe.py` — static orthographic globe image (PNG)
 
-Renders the LCM-10 land cover map across 2 or 3 orthographic globe panels
+Renders the LCM-10 land cover map across 1, 2, or 3 orthographic globe panels
 side-by-side using Cartopy + Matplotlib and saves a single PNG.  Reads both
 the LCM-10 and background imagery (world topo/bathy) directly from public
 Cloud-Optimized GeoTIFFs over HTTPS — no local data files required.
@@ -62,21 +62,25 @@ Key config at the top of the script:
 
 | Parameter | Default | Description |
 |---|---|---|
-| `N_GLOBES` | `2` | Number of panels (`2` or `3`) |
+| `N_GLOBES` | `2` | Number of panels (`1`, `2`, or `3`) |
 | `GLOBE_CENTERS` | see script | `(lon, lat)` for each panel |
 | `BACKGROUND` | `"black"` | `"black"`, `"white"`, or `"transparent"` |
 | `DOWNSAMPLE_FACTOR` | `8` | COG overview level to read (must match an existing overview) |
 | `DPI` | `300` | Output resolution |
+| `CUTLINE_LAT` | `None` | Latitude of horizontal cut; `None` = full circle. Everything below is clipped, producing a "cut figure" with a flat bottom edge. |
+| `COUNTRY_BORDERS` | `False` | Draw country border lines |
+| `COUNTRY_BORDER_COLOR` | `"white"` | Colour for country borders |
+| `COUNTRY_BORDER_WIDTH` | `0.3` | Line width for country borders |
 
 ```bash
-GDAL_HTTP_UNSAFESSL=YES python scripts/globe_ortho.py
+GDAL_HTTP_UNSAFESSL=YES python scripts/orthographic_globe.py
 ```
 
 Dependencies: `cartopy rasterio matplotlib numpy scipy`
 
 ---
 
-### `scripts/globe.py` — rotating globe animation (GIF + MP4)
+### `scripts/rotating_globe.py` — rotating globe animation (GIF + MP4)
 
 Renders a full-rotation animation of the LCM-10 land cover layer draped on a
 sphere using PyVista.  Outputs `globe_rotation_fps<N>.gif` and `.mp4`.
