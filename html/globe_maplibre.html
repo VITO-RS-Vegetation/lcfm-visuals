@@ -218,8 +218,8 @@
     }));
 
     // ── LCM-10 tile sources: COG (low zoom) + WMTS (high zoom) ──
-    // Switch at z=12: COG is sufficient at low/mid zoom, WMTS is used for high zoom detail.
-    const LCM10_SWITCH_ZOOM = 12;
+    // Switch at z=6: WMTS coverage starts at z6, so switch at first guaranteed WMTS zoom.
+    const LCM10_SWITCH_ZOOM = 6;
 
     // bidx=1 only: colormap maps band 1 values to RGBA (including 255→transparent).
     const LCM10_COG_TILES =
