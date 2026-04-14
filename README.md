@@ -10,12 +10,6 @@ Open directly in a browser via GitHack (no build step required):
 
 [https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_maplibre.html](https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_maplibre.html)
 
-> If the page appears stale after a new commit, use a commit-SHA URL to bypass the CDN cache:
-> ```
-> https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/globe_maplibre.html
-> ```
-> Get the SHA with `git rev-parse HEAD`.
-
 See [`plans/GLOBE_VIZ_PLAN.md`](plans/GLOBE_VIZ_PLAN.md) for implementation details and design decisions.
 
 ## Interactive Globe — LCM-10 CesiumJS viewer
@@ -26,13 +20,13 @@ Open directly in a browser via GitHack (no build step required):
 
 [https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_cesium.html](https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_cesium.html)
 
-> If the page appears stale after a new commit, use a commit-SHA URL to bypass the CDN cache:
+See [`plans/GLOBE_VIZ_CESIUM.md`](plans/GLOBE_VIZ_CESIUM.md) for implementation details and design decisions.
+
+> If either page appears stale after a new commit, use a commit-SHA URL to bypass the CDN cache:
 > ```
-> https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/globe_cesium.html
+> https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/<filename>.html
 > ```
 > Get the SHA with `git rev-parse HEAD`.
-
-See [`plans/GLOBE_VIZ_CESIUM.md`](plans/GLOBE_VIZ_CESIUM.md) for implementation details and design decisions.
 
 ---
 

@@ -169,7 +169,7 @@
     <div class="legend-item"><div class="swatch" style="background:#0A0A0A;border-color:rgba(255,255,255,0.4)"></div><span>Unclassifiable</span></div>
     <hr style="border-color:rgba(255,255,255,0.12);margin:8px 0 6px" />
     <div style="font-size:10px;color:#888;line-height:1.4">
-      © VITO 2026. European Union's Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/" style="color:#9bd" target="_blank">CC-BY 4.0</a>
+      © VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/" style="color:#9bd" target="_blank">CC-BY 4.0</a>
     </div>
   </div>
 
@@ -217,15 +217,26 @@
       255: [0,    0,   0,   0],   // No-data → fully transparent
     }));
 
-    // ── titiler XYZ tile template ──
+    // ── LCM-10 tile sources: COG (low zoom) + WMTS (high zoom) ──
+    // Switch at z=6: WMTS coverage starts at z6, so switch at first guaranteed WMTS zoom.
+    const LCM10_SWITCH_ZOOM = 6;
+
     // bidx=1 only: colormap maps band 1 values to RGBA (including 255→transparent).
-    const LCM10_TILES =
+    const LCM10_COG_TILES =
       'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
       + `?url=${COG_URL}`
       + '&bidx=1'
       + `&colormap=${COLORMAP}`
       + '&tilesize=512'
       + '&resampling=mode';
+
+    const LCM10_WMTS_TILES =
+      'https://wmts.terrascope.be/wmts'
+      + '?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+      + '&LAYER=lcfm-lcm-10_map&STYLE=default&FORMAT=image/png'
+      + '&TILEMATRIXSET=EPSG:3857'
+      + '&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}'
+      + '&TIME=2020-01-01';
 
     // ── Blue Marble — USGS WMS 1.3.0, CRS=EPSG:3857 ──
     // WMS 1.3.0 uses CRS= (instead of SRS= in 1.1.x) and {bbox-epsg-3857}
@@ -284,18 +295,35 @@
         source: 'blue-marble',
       });
 
-      // ── Layer 2: LCM-10 land cover (foreground, alpha from band 2) ──
-      map.addSource('lcm10', {
+      // ── Layer 2: LCM-10 land cover (foreground) ──
+      map.addSource('lcm10-cog', {
         type: 'raster',
-        tiles: [LCM10_TILES],
+        tiles: [LCM10_COG_TILES],
         tileSize: 512,
-        maxzoom: 13,  // oversample zoom-13 tile beyond this; avoids titiler requests at native res
+        maxzoom: 13,
         attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
       });
       map.addLayer({
-        id: 'lcm10',
+        id: 'lcm10-cog',
         type: 'raster',
-        source: 'lcm10',
+        source: 'lcm10-cog',
+        maxzoom: LCM10_SWITCH_ZOOM,
+        paint: { 'raster-opacity': 1.0 },
+      });
+
+      map.addSource('lcm10-wmts', {
+        type: 'raster',
+        tiles: [LCM10_WMTS_TILES],
+        tileSize: 256,
+        minzoom: LCM10_SWITCH_ZOOM,
+        maxzoom: 14,
+        attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
+      });
+      map.addLayer({
+        id: 'lcm10-wmts',
+        type: 'raster',
+        source: 'lcm10-wmts',
+        minzoom: LCM10_SWITCH_ZOOM,
         paint: { 'raster-opacity': 1.0 },
       });
 

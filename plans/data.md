@@ -212,6 +212,21 @@ https://wmts.terrascope.be/wmts
 For a MapLibre `raster` source, treat this as WebMercator WMTS tiles and respect the
 published coverage range (`z6`–`z14`).
 
+#### Zoom-switch rationale (COG → WMTS)
+
+Based on the information in this document, the defensible switch point is **z=6**:
+
+- WMTS availability is explicitly verified for `z6`–`z14`; below z6, WMTS is outside
+  published coverage.
+- The COG+titiler path is valid at low zoom and optimized via `tilesize=512`, so it is
+  still suitable as a fallback below the WMTS range.
+- No benchmark data is documented here that proves a later threshold (for example z10
+  or z12) is better. Without that evidence, switching at the first guaranteed WMTS zoom
+  avoids an arbitrary cutoff.
+
+If performance testing is added later, this threshold can be revised with measured
+latency/quality results.
+
 **Protocol clarification:** QGIS may expose this source through a WMS-like provider UI,
 but `wmts.terrascope.be` itself behaves as a WMTS-only endpoint for LCM-10. WMS
 parameter-name differences such as `SRS` vs `CRS` do not fix this: live `GetMap`
