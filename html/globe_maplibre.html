@@ -109,25 +109,6 @@
       border: 1px solid rgba(255,255,255,0.15);
     }
 
-    /* Debug info panel */
-    #debug-info {
-      position: absolute;
-      bottom: 30px;
-      right: 10px;
-      background: rgba(15, 15, 15, 0.85);
-      color: #ccc;
-      padding: 5px 9px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-family: 'SF Mono', 'Consolas', monospace;
-      z-index: 2;
-      backdrop-filter: blur(4px);
-      pointer-events: none;
-      line-height: 1.6;
-    }
-    #debug-info span.wmts { color: #7cf; }
-    #debug-info span.cog  { color: #fc9; }
-
     /* Attribution — dark theme overrides */
     .maplibregl-ctrl-attrib {
       background: rgba(0,0,0,0.6) !important;
@@ -171,8 +152,6 @@
       <line x1="16" y1="6" x2="16" y2="22"/>
     </svg>
   </button>
-
-  <div id="debug-info">z=— &nbsp;|&nbsp; LCM-10: —</div>
 
   <div id="legend">
     <h3>LCM-10 Land Cover (2020)</h3>
@@ -369,17 +348,6 @@
         },
       });
     });
-
-    // ── Debug info ──
-    function updateDebug() {
-      const z = map.getZoom();
-      const src = z >= LCM10_SWITCH_ZOOM ? 'wmts' : 'cog';
-      const label = z >= LCM10_SWITCH_ZOOM ? 'WMTS' : 'COG';
-      document.getElementById('debug-info').innerHTML =
-        `z=${z.toFixed(2)} &nbsp;|&nbsp; LCM-10: <span class="${src}">${label}</span>`;
-    }
-    map.on('zoom', updateDebug);
-    map.on('load', updateDebug);
 
     // ── Borders toggle button wiring ──
     const bordersBtn = document.getElementById('borders-toggle');
