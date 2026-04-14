@@ -14,7 +14,7 @@ Open directly in a browser via GitHack (no build step required):
 > ```
 > https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/globe_maplibre.html
 > ```
-> Get the SHA with `git rev-parse HEAD`.
+> Get the **full 40-character SHA** with `git rev-parse --verify HEAD` (do not use `--short`).
 
 See [`plans/GLOBE_VIZ_PLAN.md`](plans/GLOBE_VIZ_PLAN.md) for implementation details and design decisions.
 
@@ -30,7 +30,7 @@ Open directly in a browser via GitHack (no build step required):
 > ```
 > https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/globe_cesium.html
 > ```
-> Get the SHA with `git rev-parse HEAD`.
+> Get the **full 40-character SHA** with `git rev-parse --verify HEAD` (do not use `--short`).
 
 See [`plans/GLOBE_VIZ_CESIUM.md`](plans/GLOBE_VIZ_CESIUM.md) for implementation details and design decisions.
 

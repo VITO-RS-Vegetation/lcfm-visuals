@@ -6,10 +6,11 @@ Whenever you create or modify an HTML globe visualization file (e.g. any `*.html
 
 ### How to generate the preview link
 
-1. After committing, get the full commit SHA:
+1. After committing, get the **full 40-character** commit SHA:
    ```bash
-   git rev-parse HEAD
+   git rev-parse --verify HEAD
    ```
+   Do **not** use `git rev-parse --short HEAD` for preview links.
 
 2. Construct the preview URL using the SHA (not a branch name) to avoid CDN caching:
    ```
@@ -21,7 +22,7 @@ Whenever you create or modify an HTML globe visualization file (e.g. any `*.html
 ### Example
 
 ```
-Preview: https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/32ba1b1f8c.../html/globe_maplibre.html
+Preview: https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/32ba1b1f8c1234567890abcdef1234567890abcd/html/globe_maplibre.html
 ```
 
 ### Why GitHack with a SHA?
