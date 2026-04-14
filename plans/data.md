@@ -169,6 +169,74 @@ docker run -p 8000:8000 ghcr.io/developmentseed/titiler:latest
 
 Replace `https://titiler.xyz` with `http://localhost:8000`.
 
+### Terrascope WMTS (verified alternative)
+
+Terrascope also publishes LCM-10 through a public WMTS endpoint. This is a verified
+alternative for WebMercator tile consumption, but the direct COG + `titiler.xyz` route
+above remains the current production approach in this repo.
+
+**Capabilities endpoint:** `https://wmts.terrascope.be/?REQUEST=GetCapabilities&service=wmts`
+
+| Property | Value |
+|---|---|
+| Layer identifier | `lcfm-lcm-10_map` |
+| Format | `image/png` |
+| Style | `default` |
+| Time dimension | `2020-01-01` |
+| Tile matrix set | `EPSG:3857` |
+| WGS84 bounds | lon -180..180 · lat -60..83 |
+
+**Verified sample WMTS request (April 14, 2026):**
+
+```text
+https://wmts.terrascope.be/wmts
+  ?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0
+  &LAYER=lcfm-lcm-10_map&STYLE=default&FORMAT=image/png
+  &TILEMATRIXSET=EPSG:3857&TILEMATRIX=6&TILEROW=22&TILECOL=32
+  &TIME=2020-01-01
+```
+
+*Response: `HTTP 200`, `content-type: image/png`, `content-length: 31304`.*
+
+**MapLibre-compatible WMTS KVP template:**
+
+```js
+'https://wmts.terrascope.be/wmts'
+  + '?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+  + '&LAYER=lcfm-lcm-10_map&STYLE=default&FORMAT=image/png'
+  + '&TILEMATRIXSET=EPSG:3857'
+  + '&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'
+  + '&TIME=2020-01-01'
+```
+
+For a MapLibre `raster` source, treat this as WebMercator WMTS tiles and respect the
+published coverage range (`z6`–`z14`).
+
+**Protocol clarification:** QGIS may expose this source through a WMS-like provider UI,
+but `wmts.terrascope.be` itself behaves as a WMTS-only endpoint for LCM-10. WMS
+parameter-name differences such as `SRS` vs `CRS` do not fix this: live `GetMap`
+requests with `SERVICE=WMS` to both `https://wmts.terrascope.be/` and
+`https://wmts.terrascope.be/wmts` returned:
+
+```json
+{"detail":"Invalid 'SERVICE' parameter: WMS. Only 'wmts' is accepted"}
+```
+
+The capabilities document also publishes a REST-style tile template:
+
+```text
+https://wmts.terrascope.be/lcfm-lcm-10/default/{TIME}/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.png?assets=MAP&colormap_name=lcfm&resampling=mode
+```
+
+As of April 14, 2026 that REST URL shape should **not** be treated as working. A live
+request returned:
+
+```json
+{"detail":"Missing WMTS 'SERVICE' parameter."}
+```
+
+Use the WMTS KVP `GetTile` form above instead.
+
 ---
 
 ## 3. LCM-10 STAC
@@ -198,7 +266,13 @@ Authentication required (Terrascope OIDC).
 
 ### Terrascope native titiler
 
-`titiler.terrascope.be` supports a named `lcfm` colormap for tile previews but requires OIDC authentication. The public `titiler.xyz` instance with the explicit colormap above is used instead.
+`titiler.terrascope.be` is a `titiler-stacapi` deployment. It exposes endpoints scoped
+to STAC collections and items (for example `/collections/{id}/items/{item_id}/...`),
+not the generic COG-router endpoints exposed by a standard TiTiler deployment. In
+particular, there is no public `/cog/preview` route there for the global LCM-10 mosaic.
+
+The public `titiler.xyz` instance with the explicit colormap above is therefore still
+the documented generic COG-tiling path in this project.
 
 ---
 
