@@ -12,9 +12,9 @@ Open directly in a browser via GitHack (no build step required):
 
 > If the page appears stale after a new commit, use a commit-SHA URL to bypass the CDN cache:
 > ```
-> https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/globe_maplibre.html
+> https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<short-sha>/html/globe_maplibre.html
 > ```
-> Get the **full 40-character SHA** with `git rev-parse --verify HEAD` (do not use `--short`).
+> Get a short SHA with `git rev-parse --short=12 HEAD`.
 
 See [`plans/GLOBE_VIZ_PLAN.md`](plans/GLOBE_VIZ_PLAN.md) for implementation details and design decisions.
 
@@ -28,9 +28,9 @@ Open directly in a browser via GitHack (no build step required):
 
 > If the page appears stale after a new commit, use a commit-SHA URL to bypass the CDN cache:
 > ```
-> https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<full-sha>/html/globe_cesium.html
+> https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/<short-sha>/html/globe_cesium.html
 > ```
-> Get the **full 40-character SHA** with `git rev-parse --verify HEAD` (do not use `--short`).
+> Get a short SHA with `git rev-parse --short=12 HEAD`.
 
 See [`plans/GLOBE_VIZ_CESIUM.md`](plans/GLOBE_VIZ_CESIUM.md) for implementation details and design decisions.
 
