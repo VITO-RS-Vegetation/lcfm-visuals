@@ -308,7 +308,7 @@
         type: 'raster',
         source: 'lcm10-cog',
         maxzoom: LCM10_SWITCH_ZOOM,
-        paint: { 'raster-opacity': 1.0 },
+        paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
       });
 
       map.addSource('lcm10-wmts', {
