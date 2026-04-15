@@ -1,8 +1,10 @@
-# lcfm_globe
+# lcfm-visuals
 
-Interactive globe visualizations and scripts for the LCFM & SEN4LDN projects.
+Interactive globe visualizations and scripts for the LCFM project.
 
-## Interactive Globe — LCM-10 MapLibre viewer
+## Interactive globes
+
+### LCM-10 MapLibre viewer
 
 **`html/globe_maplibre.html`** — production MapLibre GL JS globe with the LCM-10 land cover layer over USGS imagery.
 
@@ -12,13 +14,15 @@ Open directly in a browser via GitHack (no build step required):
 
 See [`plans/GLOBE_VIZ_PLAN.md`](plans/GLOBE_VIZ_PLAN.md) for implementation details and design decisions.
 
-## Interactive Globe — LCM-10 CesiumJS viewer
+### LCM-10 CesiumJS viewer
 
 **`html/globe_cesium.html`** — CesiumJS globe with the same LCM-10 land cover layer over USGS imagery, mirroring the MapLibre viewer.
 
 Open directly in a browser via GitHack (no build step required):
 
 [https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_cesium.html](https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_cesium.html)
+
+> **Limitation:** the CesiumJS viewer does not use the WMTS endpoint for high zoom levels, so tile detail is capped at the base COG overview resolution.
 
 See [`plans/GLOBE_VIZ_CESIUM.md`](plans/GLOBE_VIZ_CESIUM.md) for implementation details and design decisions.
 
@@ -44,6 +48,16 @@ Reference documents, design decisions, and data specifications.
 ---
 
 ## Scripts
+
+### Environment
+
+All Python scripts are managed with [uv](https://docs.astral.sh/uv/). Install dependencies and create the virtual environment with:
+
+```bash
+uv sync
+```
+
+Prefix any script invocation with `uv run` to use the managed environment (no manual activation needed).
 
 ### `scripts/orthographic_globe.py` — static orthographic globe image (PNG)
 
@@ -71,8 +85,6 @@ Key config at the top of the script:
 GDAL_HTTP_UNSAFESSL=YES python scripts/orthographic_globe.py
 ```
 
-Dependencies: `cartopy rasterio matplotlib numpy scipy`
-
 ---
 
 ### `scripts/rotating_globe.py` — rotating globe animation (GIF + MP4)
@@ -80,4 +92,6 @@ Dependencies: `cartopy rasterio matplotlib numpy scipy`
 Renders a full-rotation animation of the LCM-10 land cover layer draped on a
 sphere using PyVista.  Outputs `globe_rotation_fps<N>.gif` and `.mp4`.
 
-Dependencies: `pyvista rasterio imageio imageio-ffmpeg pillow`
+```bash
+uv run python scripts/rotating_globe.py
+```
