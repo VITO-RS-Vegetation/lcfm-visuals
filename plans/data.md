@@ -212,6 +212,51 @@ https://wmts.terrascope.be/wmts
 For a MapLibre `raster` source, treat this as WebMercator WMTS tiles and respect the
 published coverage range (`z6`–`z14`).
 
+#### Backend & resampling pipeline
+
+`wmts.terrascope.be` is a **titiler-stacapi** instance. Each WMTS tile is rendered on
+demand from the individual 3×3 degree COG STAC items in the
+[`lcfm-lcm-10` STAC collection](https://stac.terrascope.be/collections/lcfm-lcm-10).
+
+The collection's `renders` specification for the MAP layer includes `"resampling": "mode"`:
+
+```json
+"renders": {
+  "map": {
+    "assets": ["MAP"],
+    "colormap_name": "lcfm",
+    "resampling": "mode",
+    "tilematrixsets": { "EPSG:3857": [6, 14] }
+  }
+}
+```
+
+`mode` is active at **two levels** in the pipeline, both required for correct categorical
+output:
+
+1. **COG overviews (baked in):** each STAC item COG has overviews pre-built with `mode`
+   resampling. Lower-zoom tiles are served from these pre-existing majority-vote overview
+   levels.
+2. **titiler render pass:** the `renders.resampling: mode` configuration applies an
+   additional mode pass when titiler samples from the overview to fill the 256×256 PNG
+   tile.
+
+Together these ensure every WMTS tile at z=6–14 represents the majority land-cover class
+per output pixel without value corruption.
+
+#### Server-side vs. client-side resampling
+
+Two conceptually distinct resampling stages apply to this data:
+
+| Stage | Setting | Where | Direction | Purpose |
+|---|---|---|---|---|
+| titiler / GDAL | `resampling=mode` | Server (tile generation) | Downsample | Aggregate many source pixels into one tile pixel; `mode` preserves categorical majority value |
+| MapLibre display | `raster-resampling: nearest` | Client (tile rendering) | Upsample / overzoom | Scale rendered tile PNGs for display; `nearest` preserves sharp class boundaries |
+
+Both must use the correct method. Using `linear` (MapLibre's default) for the display
+stage blends neighbouring class colors when overzooming WMTS tiles beyond z=14, producing
+a continuous-gradient appearance even though the underlying tile data is correct.
+
 #### Zoom-switch rationale (COG → WMTS)
 
 Based on the information in this document, the defensible switch point is **z=6**:
