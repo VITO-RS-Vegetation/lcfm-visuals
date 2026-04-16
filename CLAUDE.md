@@ -31,6 +31,18 @@ Preview: https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/32ba1b1f8c.../h
 
 ---
 
+## Running Scripts
+
+Always use `uv run` to invoke Python scripts so the managed venv is used automatically:
+
+```bash
+uv run python scripts/orthographic_globe.py --config configs/globes.toml
+```
+
+Run `uv sync` first if the environment is missing or after updating `pyproject.toml`.
+
+---
+
 ## Plans folder (`plans/`)
 
 Reference documents, design decisions, and data specifications for this project. Table of contents:
