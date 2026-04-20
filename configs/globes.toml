@@ -7,9 +7,14 @@
 
 [global]
 cog_url              = "https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/LCM-10_v100_2020_MAP_lat-lon.tif"
-downsample_factor    = 8
 bg_cog_url           = "https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/world_topo_bathy_200407_WGS84.tif"
-bg_downsample_factor = 8
+# downsample_factor and bg_downsample_factor are intentionally omitted: the
+# script auto-selects the optimal COG overview for each render's globe_size_px
+# and visible geographic extent.  Re-add either key here (or per [[render]])
+# to override with an explicit integer factor.
+# quality_scale = 2.0 is the default; increase for sharper full-globe renders
+# (e.g. 3.0), decrease to 1.0 for faster/smaller output.
+quality_scale        = 2.0
 background           = "transparent"
 globe_size_px        = 2100
 globe_gap_px         = 200
@@ -52,8 +57,11 @@ globe_centers = [[-90.0, 15.0], [25.0, 30.0], [130.0, 20.0]]
 # ---------------------------------------------------------------------------
 
 [[render]]
-name         = "maplibre_link"
-output       = "images/maplibre_link.png"
-maplibre_url = "https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/5ed1c6a75b7cbec0a8878c8f0c13e25d8d0655ed/html/globe_maplibre.html#6.88/27.841/-80.949"
-aspect_ratio = 1.78   # 16:9 — wider screen-like crop
-globe_gap_px = 0      # no margin — content fills edge to edge
+name          = "maplibre_link"
+output        = "images/maplibre_link.png"
+maplibre_url  = "https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_maplibre.html#4.18/44.85/-0.29"
+aspect_ratio  = 1.78   # 16:9 — wider screen-like crop
+globe_gap_px  = 0      # no margin — content fills edge to edge
+globe_size_px = 3200   # 3200 × 1798 px — corners stay within the visible hemisphere
+                       # (max safe value ≈ 3620 px for zoom=4.18, lat=44.85°)
+quality_scale = 2.0    # 2 source px per output px → proper downsampling, no upsample artifacts

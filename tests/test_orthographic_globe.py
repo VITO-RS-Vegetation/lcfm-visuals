@@ -13,12 +13,17 @@ from __future__ import annotations
 import math
 import tomllib
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
 from orthographic_globe import (
     GlobeView,
+    _bbox_for_view,
+    _optimal_factor,
     _parse_globe_views,
+    _render_bbox,
+    _visible_width_deg_for_render,
     globe_view_from_maplibre_url,
     parse_maplibre_hash,
     zoom_to_mpp,
@@ -227,3 +232,173 @@ def test_parse_globe_views_maplibre_config():
     views = _parse_globe_views(entry)
     assert len(views) == 1
     assert views[0].zoom is not None
+
+
+# ---------------------------------------------------------------------------
+# _optimal_factor
+# ---------------------------------------------------------------------------
+
+def _mock_src(width: int, overviews: list[int]) -> MagicMock:
+    src = MagicMock()
+    src.width = width
+    src.overviews.return_value = overviews
+    return src
+
+
+def test_optimal_factor_full_globe_lcm10():
+    # LCM-10: 36 000 px wide, overviews [2,4,8,16,32,64,128], panel 2100 px
+    # ideal = 36000 * 180 / (360 * 2100) ≈ 8.57 → largest ov. ≤ 8.57 → 8
+    src = _mock_src(36_000, [2, 4, 8, 16, 32, 64, 128])
+    assert _optimal_factor(src, 2100, 180.0) == 8
+
+
+def test_optimal_factor_full_globe_bg_cog():
+    # BG COG: 21 600 px wide, overviews [2,4,8,16,32,64], panel 2100 px
+    # ideal = 21600 * 180 / (360 * 2100) ≈ 5.14 → largest ov. ≤ 5.14 → 4
+    src = _mock_src(21_600, [2, 4, 8, 16, 32, 64])
+    assert _optimal_factor(src, 2100, 180.0) == 4
+
+
+def test_optimal_factor_zoomed_selects_finer():
+    # Zoomed view at visible_width_deg=46°
+    # ideal = 36000 * 46 / (360 * 2100) ≈ 2.19 → largest ov. ≤ 2.19 → 2
+    src = _mock_src(36_000, [2, 4, 8, 16, 32, 64, 128])
+    assert _optimal_factor(src, 2100, 46.0) == 2
+
+
+def test_optimal_factor_fallback_to_native():
+    # ideal ≈ 0.24 — no overview small enough → fall back to 1 (native)
+    src = _mock_src(1_000, [2, 4, 8])
+    assert _optimal_factor(src, 2100, 180.0) == 1
+
+
+def test_optimal_factor_exact_match():
+    # visible_width_deg=90: ideal = 36000 * 90 / (360 * 2100) ≈ 4.29 → 4
+    src = _mock_src(36_000, [2, 4, 8, 16])
+    assert _optimal_factor(src, 2100, 90.0) == 4
+
+
+def test_optimal_factor_no_overviews_returns_native():
+    # COG with no pre-built overviews → always return 1
+    src = _mock_src(10_000, [])
+    assert _optimal_factor(src, 2100, 180.0) == 1
+
+
+# ---------------------------------------------------------------------------
+# _visible_width_deg_for_render
+# ---------------------------------------------------------------------------
+
+def test_visible_width_full_globe():
+    views = [GlobeView(lon=0.0, lat=0.0)]
+    assert _visible_width_deg_for_render(views, 2100) == pytest.approx(180.0)
+
+
+def test_visible_width_multiple_full_globes():
+    views = [GlobeView(0, 0), GlobeView(90, 30), GlobeView(180, -15)]
+    assert _visible_width_deg_for_render(views, 2100) == pytest.approx(180.0)
+
+
+def test_visible_width_zoomed():
+    view = GlobeView(lon=-0.29, lat=44.85, zoom=4.18)
+    expected = 2100 * zoom_to_mpp(4.18, 44.85) / 111_320.0
+    assert _visible_width_deg_for_render([view], 2100) == pytest.approx(expected)
+
+
+def test_visible_width_mixed_returns_minimum():
+    """With full-globe and zoomed views, the zoomed (smaller) value is returned."""
+    zoomed_view = GlobeView(0.0, 0.0, zoom=4.0)
+    full_view   = GlobeView(0.0, 0.0)
+    vwd_zoomed  = 2100 * zoom_to_mpp(4.0, 0.0) / 111_320.0
+    assert _visible_width_deg_for_render([full_view, zoomed_view], 2100) == pytest.approx(vwd_zoomed)
+    assert vwd_zoomed < 180.0  # sanity check
+
+
+# ---------------------------------------------------------------------------
+# _optimal_factor with quality_scale
+# ---------------------------------------------------------------------------
+
+def test_optimal_factor_quality_scale_2_lcm10():
+    # LCM-10 full globe, qs=2.0: ideal = 8.57/2 = 4.28 → ov ≤ 4.28 → 4
+    src = _mock_src(36_000, [2, 4, 8, 16, 32, 64, 128])
+    assert _optimal_factor(src, 2100, 180.0, quality_scale=2.0) == 4
+
+
+def test_optimal_factor_quality_scale_2_bg_cog():
+    # BG COG full globe, qs=2.0: ideal = 5.14/2 = 2.57 → ov ≤ 2.57 → 2
+    src = _mock_src(21_600, [2, 4, 8, 16, 32, 64])
+    assert _optimal_factor(src, 2100, 180.0, quality_scale=2.0) == 2
+
+
+def test_optimal_factor_quality_scale_1_unchanged():
+    # qs=1.0 should give the same result as calling without the argument.
+    src = _mock_src(36_000, [2, 4, 8, 16, 32, 64, 128])
+    assert _optimal_factor(src, 2100, 180.0, quality_scale=1.0) == \
+           _optimal_factor(src, 2100, 180.0)
+
+
+# ---------------------------------------------------------------------------
+# _bbox_for_view
+# ---------------------------------------------------------------------------
+
+def test_bbox_for_view_full_globe_returns_none():
+    view = GlobeView(lon=10.0, lat=45.0)   # zoom is None
+    assert _bbox_for_view(view, 2100) is None
+
+
+def test_bbox_for_view_zoomed_returns_tuple():
+    view = GlobeView(lon=-0.29, lat=44.85, zoom=4.18)
+    result = _bbox_for_view(view, 2100)
+    assert result is not None
+    lon_min, lat_min, lon_max, lat_max = result
+    assert lon_min < view.lon < lon_max
+    assert lat_min < view.lat < lat_max
+
+
+def test_bbox_for_view_clamps_to_world_bounds():
+    # Extreme northern latitude with large zoom-out should clamp lat to ≤ 90
+    view = GlobeView(lon=0.0, lat=80.0, zoom=0.5)
+    result = _bbox_for_view(view, 2100)
+    assert result is not None
+    assert result[1] >= -90.0
+    assert result[3] <= 90.0
+    assert result[0] >= -180.0
+    assert result[2] <= 180.0
+
+
+def test_bbox_for_view_buffer_widens_bbox():
+    view = GlobeView(lon=0.0, lat=0.0, zoom=4.0)
+    no_buf  = _bbox_for_view(view, 2100, buffer=0.0)
+    with_buf = _bbox_for_view(view, 2100, buffer=0.2)
+    assert no_buf is not None and with_buf is not None
+    assert with_buf[0] <= no_buf[0]   # lon_min is more negative
+    assert with_buf[2] >= no_buf[2]   # lon_max is more positive
+
+
+# ---------------------------------------------------------------------------
+# _render_bbox
+# ---------------------------------------------------------------------------
+
+def test_render_bbox_full_globe_returns_none():
+    views = [GlobeView(lon=0.0, lat=0.0)]
+    assert _render_bbox(views, 2100) is None
+
+
+def test_render_bbox_mixed_returns_none():
+    views = [GlobeView(lon=0.0, lat=0.0), GlobeView(lon=10.0, lat=20.0, zoom=3.0)]
+    assert _render_bbox(views, 2100) is None
+
+
+def test_render_bbox_all_zoomed_returns_union():
+    v1 = GlobeView(lon=-10.0, lat=40.0, zoom=4.0)
+    v2 = GlobeView(lon= 20.0, lat=50.0, zoom=4.0)
+    result = _render_bbox([v1, v2], 2100)
+    assert result is not None
+    b1 = _bbox_for_view(v1, 2100)
+    b2 = _bbox_for_view(v2, 2100)
+    assert result[0] == min(b1[0], b2[0])  # type: ignore[index]
+    assert result[2] == max(b1[2], b2[2])  # type: ignore[index]
+
+
+def test_render_bbox_single_zoomed_matches_bbox_for_view():
+    view = GlobeView(lon=2.35, lat=48.85, zoom=5.0)
+    assert _render_bbox([view], 2100) == _bbox_for_view(view, 2100)

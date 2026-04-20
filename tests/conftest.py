@@ -31,6 +31,7 @@ _MOCKED_MODULES = [
     "matplotlib.pyplot",
     "rasterio",
     "rasterio.enums",
+    "rasterio.windows",
 ]
 for _mod in _MOCKED_MODULES:
     if _mod not in sys.modules:
