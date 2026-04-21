@@ -394,3 +394,45 @@ map.addLayer({
     'line-opacity': 0.55,
   },
 });
+
+---
+
+## 5. Background imagery — world_topo_bathy_200407_WGS84.tif
+
+Used by `orthographic_globe.py` as the base layer beneath the LCM-10 overlay.
+Visible in polar regions outside LCM-10 coverage (>83°N, <60°S) and over ocean.
+
+### Asset URL
+
+| Location | URL | Access |
+|---|---|---|
+| S3 / CloudFerro | `https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/world_topo_bathy_200407_WGS84.tif` | Public HTTPS, HTTP range requests confirmed |
+
+### COG technical specification
+
+| Property | Value |
+|---|---|
+| Format | GeoTIFF with pre-built overviews (COG-compatible) |
+| CRS | EPSG:4326 |
+| Size | 21 600 × 10 800 px |
+| Coverage | 180°W–180°E, 90°S–90°N (full globe) |
+| Bands | 3 (R, G, B) — uint8 |
+| No-data | None |
+| Overviews | 2, 4, 8, 16, 32, 64 |
+| Content | World topography + bathymetry composite (Blue Marble style, April 2004) |
+
+### Resampling
+
+`Resampling.bilinear` (fallback, applied only when the requested downsample factor
+has no exact pre-built overview). Bilinear is appropriate for continuous imagery.
+
+### Auto-factor calculation
+
+At `globe_size_px = 2100` (full-globe view, `visible_width_deg = 180`):
+
+$$\text{ideal\_factor} = \frac{21600 \times 180}{360 \times 2100} \approx 5.1$$
+
+The largest pre-built overview ≤ 5.1 is **4** — so `orthographic_globe.py` selects
+overview ×4 (`5 400 × 2 700 px`) rather than ×8, avoiding the over-downsampling
+that was previously caused by the hardcoded `bg_downsample_factor = 8` in
+`configs/globes.toml`.
