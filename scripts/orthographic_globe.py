@@ -28,7 +28,7 @@ Output dimensions are controlled by ``GLOBE_SIZE_PX`` (each panel's square
 side length) and ``GLOBE_GAP_PX`` (inter-panel gap; outer margins are half
 this value on all four sides)::
 
-    Figure width  = N × (GLOBE_SIZE_PX + GLOBE_GAP_PX) px
+    Figure width  = N x (GLOBE_SIZE_PX + GLOBE_GAP_PX) px
     Figure height =      GLOBE_SIZE_PX + GLOBE_GAP_PX  px
 
 Config-driven batch rendering
@@ -130,7 +130,7 @@ def zoom_to_mpp(zoom: float, lat: float) -> float:
     Uses standard WebMercator tile math (512-px tiles, equatorial
     circumference 40 075 016.68 m)::
 
-        mpp = (40_075_016.68 / (512 × 2^zoom)) × cos(lat)
+        mpp = (40_075_016.68 / (512 x 2^zoom)) x cos(lat)
 
     Args:
         zoom: MapLibre zoom level (fractional values accepted).
@@ -171,24 +171,24 @@ COG_URL = (
     "LCM-10_v100_2020_MAP_lat-lon.tif"
 )
 
-# Downsample factor relative to native resolution (36 000 × 14 275 px).
-# None → auto-select the optimal pre-built COG overview for the current
+# Downsample factor relative to native resolution (36 000 x 14 275 px).
+# None -> auto-select the optimal pre-built COG overview for the current
 # globe_size_px and visible geographic extent.  Set an explicit integer to
-# override (e.g. 8 → ~4 500 × 1 784 px).
+# override (e.g. 8 -> ~4 500 x 1 784 px).
 DOWNSAMPLE_FACTOR: int | None = None
 
 # Optional background imagery COG (3-band RGB uint8, EPSG:4326).
-# None → use Cartopy's built-in Natural Earth stock image (ax.stock_img()).
+# None -> use Cartopy's built-in Natural Earth stock image (ax.stock_img()).
 BG_COG_URL: str | None = (
     "https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/"
     "world_topo_bathy_200407_WGS84.tif"
 )
-# Downsample factor for the background COG.  None → auto-select.
+# Downsample factor for the background COG.  None -> auto-select.
 BG_DOWNSAMPLE_FACTOR: int | None = None
 
 # Oversampling quality factor used when selecting a COG overview for
 # full-globe renders.  1.0 = 1 source pixel per output pixel (minimum);
-# 2.0 = 2 source pixels per output pixel (sharper; 4× data but still
+# 2.0 = 2 source pixels per output pixel (sharper; 4x data but still
 #        served from pre-built overviews — no extra network cost per tile).
 # Zoomed renders always use windowed native-resolution reads instead.
 QUALITY_SCALE: float = 2.0
@@ -204,7 +204,7 @@ BACKGROUND = "black"
 GLOBE_VIEWS: list[GlobeView] = [GlobeView(-90.0, 15.0), GlobeView(60.0, 25.0)]
 
 # Panel size and spacing in pixels.
-# Each panel is GLOBE_SIZE_PX × GLOBE_SIZE_PX.
+# Each panel is GLOBE_SIZE_PX x GLOBE_SIZE_PX.
 # GLOBE_GAP_PX is the gap between adjacent panels; outer margins equal
 # GLOBE_GAP_PX / 2 on every side (left, right, top, bottom).
 GLOBE_SIZE_PX: int = 2100
@@ -221,7 +221,7 @@ BORDER_COLOR: str = "white"   # use "black" for light backgrounds
 BORDER_WIDTH: float = 0.4
 
 # ---------------------------------------------------------------------------
-# LCM-10 colormap  (value → CSS hex; None = transparent / no-data)
+# LCM-10 colormap  (value -> CSS hex; None = transparent / no-data)
 # ---------------------------------------------------------------------------
 COLORMAP_HEX: dict[int, str | None] = {
     10:  "#006400",   # Tree cover
@@ -236,7 +236,7 @@ COLORMAP_HEX: dict[int, str | None] = {
     100: "#0064C8",   # Permanent water bodies
     110: "#F0F0F0",   # Snow and ice
     254: "#0A0A0A",   # Unclassifiable
-    255: None,        # No-data → transparent
+    255: None,        # No-data -> transparent
 }
 
 # ---------------------------------------------------------------------------
@@ -314,12 +314,12 @@ def _optimal_factor(
     The effective ideal factor requires ``quality_scale`` source pixels per
     output pixel::
 
-        effective_ideal = native_width × visible_width_deg
-                          / (360 × globe_size_px × quality_scale)
+        effective_ideal = native_width x visible_width_deg
+                          / (360 x globe_size_px x quality_scale)
 
     With ``quality_scale = 1.0`` the function selects the coarsest overview
     that gives ≥ 1 source pixel per output pixel.  With ``quality_scale = 2.0``
-    it requires ≥ 2 source pixels per output pixel (sharper, costs 4× data
+    it requires ≥ 2 source pixels per output pixel (sharper, costs 4x data
     but served from pre-built overviews).
 
     Returns the *largest* available pre-built overview factor ≤ the effective
@@ -359,9 +359,18 @@ def _bbox_for_view(
     Returns ``None`` for full-globe views (``view.zoom is None``), which
     should always use full-extent overview reads instead.
 
-    The visible half-widths in degrees are derived from the WebMercator tile
-    math already used by ``zoom_to_mpp``.  A ``buffer`` fraction is added on
-    all sides so Cartopy can anti-alias edges correctly.
+    The bounding box is computed by converting the orthographic viewport
+    boundary to geographic coordinates via the inverse orthographic projection.
+    Simple lat/lon arithmetic significantly underestimates the geographic
+    extent of the diagonal corners because an orthographic corner sits on a
+    great-circle arc that dips well below the lat computed from the vertical
+    half-extent alone.
+
+    The four viewport corners are converted without buffer (applying buffer
+    to the corners would push their diagonal distance beyond the globe limb
+    and produce NaN).  The four edge midpoints are converted with the full
+    buffer applied so the loaded COG window extends slightly beyond the panel
+    edges, preventing interpolation artefacts.
 
     Args:
         view: Globe camera position.  ``view.zoom`` must not be ``None``.
@@ -371,23 +380,32 @@ def _bbox_for_view(
 
     Returns:
         ``(lon_min, lat_min, lon_max, lat_max)`` in degrees, clamped to
-        ±180 /  ±90, or ``None`` for full-globe views.
+        ±180 / ±90, or ``None`` for full-globe views.
     """
     if view.zoom is None:
         return None
-    panel_h_px = globe_size_px / aspect_ratio
+    panel_h_px = round(globe_size_px / aspect_ratio)
     mpp = zoom_to_mpp(view.zoom, view.lat)
-    half_w_m = (globe_size_px / 2) * mpp * (1 + buffer)
-    half_h_m = (panel_h_px   / 2) * mpp * (1 + buffer)
-    # Convert metres → degrees (approximate; exact enough for window selection).
-    cos_lat = math.cos(math.radians(view.lat))
-    half_lon = half_w_m / (111_320.0 * cos_lat) if cos_lat > 1e-9 else 180.0
-    half_lat = half_h_m / 111_320.0
+    hw = (globe_size_px / 2) * mpp   # half-width in metres (no buffer)
+    hh = (panel_h_px   / 2) * mpp   # half-height in metres (no buffer)
+    bw = hw * (1 + buffer)           # buffered half-width  (edge midpoints only)
+    bh = hh * (1 + buffer)           # buffered half-height (edge midpoints only)
+    # Sample 8 points: 4 viewport corners (no buffer — diagonal distance would
+    # exceed Earth radius) + 4 edge midpoints (buffered for warp margin).
+    proj     = ccrs.Orthographic(central_longitude=view.lon, central_latitude=view.lat)
+    geodetic = ccrs.Geodetic()
+    pts = geodetic.transform_points(
+        proj,
+        np.array([-hw,  hw,  hw, -hw, -bw,  bw,  0.0,  0.0]),
+        np.array([-hh, -hh,  hh,  hh,  0.0, 0.0, -bh,   bh]),
+    )
+    valid = ~np.any(np.isnan(pts), axis=1)
+    lons, lats = pts[valid, 0], pts[valid, 1]
     return (
-        max(-180.0, view.lon - half_lon),
-        max( -90.0, view.lat - half_lat),
-        min( 180.0, view.lon + half_lon),
-        min(  90.0, view.lat + half_lat),
+        max(-180.0, float(lons.min())),
+        max( -90.0, float(lats.min())),
+        min( 180.0, float(lons.max())),
+        min(  90.0, float(lats.max())),
     )
 
 
@@ -508,7 +526,7 @@ def _read_overview(src: rasterio.DatasetReader, downsample: int,
     target_shape = (len(bands) if bands else src.count, ov_h, ov_w)
 
     if downsample in overviews:
-        print(f"  reading overview ×{downsample} ({ov_w} × {ov_h}) — no resampling")
+        print(f"  reading overview x{downsample} ({ov_w} x {ov_h}) — no resampling")
         return src.read(out_shape=target_shape, **kwargs)
 
     warnings.warn(
@@ -558,7 +576,7 @@ def load_data(
     """
     print(f"Opening LCM-10 COG: {cog_url}")
     with rasterio.open(cog_url) as src:
-        print(f"  native size : {src.width} × {src.height}")
+        print(f"  native size : {src.width} x {src.height}")
         print(f"  overviews   : {src.overviews(1)}")
         if bbox is not None:
             lon_span = max(bbox[2] - bbox[0], 0.001)
@@ -566,7 +584,7 @@ def load_data(
             tgt_w = max(256, round(globe_size_px * quality_scale))
             tgt_h = max(256, round(tgt_w * lat_span / lon_span))
             out_shape = (src.count, tgt_h, tgt_w)
-            print(f"  target shape: {tgt_w} × {tgt_h} (quality_scale={quality_scale})")
+            print(f"  target shape: {tgt_w} x {tgt_h} (quality_scale={quality_scale})")
             data, extent = _read_window_native(
                 src, bbox, out_shape=out_shape, resampling=Resampling.mode
             )
@@ -625,7 +643,7 @@ def load_background(
     """
     print(f"Opening background COG: {cog_url}")
     with rasterio.open(cog_url) as src:
-        print(f"  native size : {src.width} × {src.height}")
+        print(f"  native size : {src.width} x {src.height}")
         print(f"  overviews   : {src.overviews(1)}")
         if bbox is not None:
             lon_span = max(bbox[2] - bbox[0], 0.001)
@@ -633,7 +651,7 @@ def load_background(
             tgt_w = max(256, round(globe_size_px * quality_scale))
             tgt_h = max(256, round(tgt_w * lat_span / lon_span))
             out_shape = (3, tgt_h, tgt_w)
-            print(f"  target shape: {tgt_w} × {tgt_h} (quality_scale={quality_scale})")
+            print(f"  target shape: {tgt_w} x {tgt_h} (quality_scale={quality_scale})")
             data, extent = _read_window_native(
                 src, bbox, bands=[1, 2, 3], out_shape=out_shape, resampling=Resampling.bilinear
             )
@@ -647,7 +665,7 @@ def load_background(
                 )
             data = _read_overview(src, downsample, Resampling.bilinear, bands=[1, 2, 3])
 
-    rgb = np.moveaxis(data, 0, -1)  # (3, H, W) → (H, W, 3)
+    rgb = np.moveaxis(data, 0, -1)  # (3, H, W) -> (H, W, 3)
     print(f"  done — RGB shape {rgb.shape}")
     return rgb, extent
 
@@ -676,7 +694,7 @@ def build_figure(
     ``globe_gap_px`` controls both the inter-panel gap and the outer margins
     (outer margins = ``globe_gap_px / 2`` on all four sides)::
 
-        Figure width  = N × (globe_size_px + globe_gap_px) px
+        Figure width  = N x (globe_size_px + globe_gap_px) px
         Figure height =      (globe_size_px / aspect_ratio) + globe_gap_px  px
 
     When a :class:`GlobeView` carries a ``zoom`` value, the panel renders a
@@ -694,7 +712,7 @@ def build_figure(
             are half this value.
         dpi: Output resolution in dots per inch.
         bg_rgb: Optional (H, W, 3) uint8 RGB background imagery.  ``None``
-            → use Cartopy's built-in Natural Earth stock image instead.
+            -> use Cartopy's built-in Natural Earth stock image instead.
         bg_extent: ``[left, right, bottom, top]`` for ``bg_rgb``.  Ignored
             when ``bg_rgb`` is ``None``.
         coastlines: When ``True``, draw coastline outlines.
@@ -711,7 +729,7 @@ def build_figure(
     panel_h_px = round(globe_size_px / aspect_ratio)
 
     # ---- Figure dimensions ------------------------------------------------
-    # Total width  = N × (panel_w + gap)  ;  outer margin = gap/2 on each side
+    # Total width  = N x (panel_w + gap)  ;  outer margin = gap/2 on each side
     # Total height =      panel_h + gap   ;  outer margin = gap/2 top and bottom
     fig_w_px = n * (globe_size_px + globe_gap_px)
     fig_h_px = panel_h_px + globe_gap_px
@@ -799,13 +817,19 @@ def build_figure(
             # transparent sides.  Override with 'auto' so the xlim/ylim
             # below map the projection metres directly to the panel pixels.
             ax.set_aspect('auto')
-            # Clip to the full axes rectangle (screen space) so the circular
-            # globe horizon is not visible inside the viewport.
-            ax.set_boundary(mpath.Path.unit_rectangle(), transform=ax.transAxes)
             # Set viewport in projection metres directly — set_extent() has
             # known issues with Orthographic when crs=proj is passed.
             ax.set_xlim(-half_w, half_w)
             ax.set_ylim(-half_h, half_h)
+            # Clip to a rectangle in projection-metre coordinates.
+            # transform=ax.transAxes is unreliable after set_aspect('auto');
+            # using data-space coords that match xlim/ylim is more robust.
+            rect = mpath.Path([
+                (-half_w, -half_h), ( half_w, -half_h),
+                ( half_w,  half_h), (-half_w,  half_h),
+                (-half_w, -half_h),
+            ])
+            ax.set_boundary(rect, transform=proj)
         else:
             # Full circular globe (Cartopy default circular boundary).
             ax.set_global()
@@ -919,7 +943,7 @@ def run_all_renders(config: dict, names: set[str] | None = None) -> None:
         bbox = _render_bbox(globe_views, globe_size, asp)
 
         n = len(globe_views)
-        print(f"\nRendering '{name}' ({n} globe(s)) → {output} ...")
+        print(f"\nRendering '{name}' ({n} globe(s)) -> {output} ...")
         rgba, lcm_extent = _load(load_data, cog_url, globe_size, vwd, ds, qs, bbox)
 
         bg_rgb: np.ndarray | None = None
@@ -946,7 +970,7 @@ def run_all_renders(config: dict, names: set[str] | None = None) -> None:
         transparent = background == "transparent"
         fig.savefig(output, dpi=dpi, transparent=transparent, facecolor=fig.get_facecolor())
         plt.close(fig)
-        print(f"  Saved → {output}")
+        print(f"  Saved -> {output}")
 
 
 # ---------------------------------------------------------------------------
@@ -1015,7 +1039,7 @@ def main() -> None:
     transparent = BACKGROUND == "transparent"
     fig.savefig(OUTPUT_PATH, dpi=DPI, transparent=transparent, facecolor=fig.get_facecolor())
     plt.close(fig)
-    print(f"Saved → {OUTPUT_PATH}")
+    print(f"Saved -> {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
