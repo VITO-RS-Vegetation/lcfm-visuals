@@ -834,13 +834,19 @@ def build_figure(
             # Full circular globe — set extent then enforce a hard circular
             # clip so imshow rasters don't bleed outside the globe limb.
             ax.set_global()
-            theta = np.linspace(0, 2 * np.pi, 200)
-            circle_path = mpath.Path(
-                np.column_stack(
-                    [0.5 + 0.5 * np.sin(theta), 0.5 + 0.5 * np.cos(theta)]
-                )
+            # Derive the globe's limb radius in projection coordinates (m).
+            # Any point at exactly 90° from the nadir lies on the limb; the
+            # point (lon+90°, lat=0°) always satisfies this regardless of the
+            # central latitude (great-circle distance = 90° by construction).
+            _limb_pt = proj.transform_point(
+                (view.lon + 90.0 + 180) % 360 - 180, 0.0, ccrs.Geodetic()
             )
-            ax.set_boundary(circle_path, transform=ax.transAxes)
+            R = float(np.hypot(_limb_pt[0], _limb_pt[1]))
+            theta = np.linspace(0, 2 * np.pi, 500)
+            ax.set_boundary(
+                mpath.Path(np.column_stack([R * np.cos(theta), R * np.sin(theta)])),
+                transform=proj,
+            )
 
     fig.subplots_adjust(
         left=left_frac, right=right_frac,
