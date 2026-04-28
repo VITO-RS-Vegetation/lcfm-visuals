@@ -1056,6 +1056,11 @@ def run_all_renders(config: dict, names: set[str] | None = None) -> None:
                         i_bg_rgb, i_bg_extent = _load(
                             load_background, bg_cog, size, icon_vwd, None, qs, icon_bbox
                         )
+                    # Icon-specific overrides fall back to the main render values.
+                    i_clines   = entry.get("icon_coastlines",       clines)
+                    i_cborders = entry.get("icon_country_borders",  cborders)
+                    i_bcol     = entry.get("icon_border_color",     bcol)
+                    i_bwidth   = entry.get("icon_border_width",     bwidth)
                     i_fig = build_figure(
                         rgba=i_rgba,
                         lcm_extent=i_extent,
@@ -1066,10 +1071,10 @@ def run_all_renders(config: dict, names: set[str] | None = None) -> None:
                         dpi=dpi,
                         bg_rgb=i_bg_rgb,
                         bg_extent=i_bg_extent,
-                        coastlines=clines,
-                        country_borders=cborders,
-                        border_color=bcol,
-                        border_width=bwidth,
+                        coastlines=i_clines,
+                        country_borders=i_cborders,
+                        border_color=i_bcol,
+                        border_width=i_bwidth,
                         aspect_ratio=asp,
                     )
                     icon_out = output.with_name(f"{output.stem}_{size}.png")
