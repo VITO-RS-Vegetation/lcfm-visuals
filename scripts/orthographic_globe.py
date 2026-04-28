@@ -750,7 +750,9 @@ def build_figure(
                 origin="upper",
                 extent=bg_extent,
                 transform=ccrs.PlateCarree(),
-                interpolation="bilinear",
+                # "nearest" prevents bilinear blending at the globe limb from
+                # smearing ocean pixels into adjacent land (blue-fringe artefact).
+                interpolation="nearest",
                 zorder=0,
             )
         else:

@@ -166,7 +166,7 @@ def test_config_render_names():
     with open(CONFIG_PATH, "rb") as fh:
         config = tomllib.load(fh)
     names = {r["name"] for r in config["render"]}
-    assert names == {"1_globe", "2_globes", "3_globes", "maplibre_link"}
+    assert names == {"1_globe_europe", "2_globes", "3_globes", "maplibre_link"}
 
 
 def test_config_global_section_present():
@@ -202,7 +202,7 @@ def test_parse_globe_views_from_maplibre_url():
 def test_parse_globe_views_1_globe_config():
     with open(CONFIG_PATH, "rb") as fh:
         config = tomllib.load(fh)
-    entry = next(r for r in config["render"] if r.get("name") == "1_globe")
+    entry = next(r for r in config["render"] if r.get("name") == "1_globe_europe")
     views = _parse_globe_views(entry)
     assert len(views) == 1
     assert views[0].zoom is None
