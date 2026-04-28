@@ -72,6 +72,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
 import rasterio.windows as rwin
+from PIL import Image
 from rasterio.enums import Resampling
 
 # ---------------------------------------------------------------------------
@@ -607,58 +608,29 @@ def load_data(
     return rgba, extent
 
 
-def _mask_to_hemisphere(
-    rgb: np.ndarray,
-    extent: list[float],
-    center_lon: float,
-    center_lat: float,
-    margin_deg: float = 1.5,
-) -> np.ndarray:
-    """Return an RGBA array with alpha=0 for pixels beyond the visible hemisphere.
+def _snap_png_alpha(path: Path, threshold: int = 128) -> None:
+    """Threshold the alpha channel of a saved PNG to a hard binary mask.
 
-    Pixels whose great-circle distance from ``(center_lon, center_lat)`` is
-    ≥ ``90° − margin_deg`` are made fully transparent.  This prevents bilinear
-    resampling artifacts ("blue ring") at the orthographic limb where Cartopy
-    warps pixels from just outside the visible hemisphere onto the disc edge.
+    Cartopy reprojects rasters with bilinear interpolation, leaving a thin
+    ring of partial-alpha pixels at the orthographic disc edge.  On a
+    transparent canvas these read as a sand/whitish halo over light land
+    (Sahara) and a near-invisible dark fringe over ocean.  This helper
+    snaps every alpha value to either 0 or 255 based on ``threshold``,
+    yielding a hard pixel-aligned limb.
+
+    See plans/limb_bleed_avenues.md (option 3 — fixes "artifact B").
 
     Args:
-        rgb: ``(H, W, 3)`` uint8 RGB array.
-        extent: ``[left, right, bottom, top]`` in degrees (PlateCarree).
-        center_lon: Central longitude of the orthographic projection (degrees).
-        center_lat: Central latitude of the orthographic projection (degrees).
-        margin_deg: Pixels within this many degrees of the limb are also
-            masked; guards against sub-pixel interpolation fringe.
-
-    Returns:
-        ``(H, W, 4)`` uint8 RGBA array.
+        path: Path to an RGBA PNG.  Replaced in-place.
+        threshold: Alpha cutoff (0–255).  Pixels with alpha ≥ threshold become
+            fully opaque; the rest become fully transparent.
     """
-    h, w = rgb.shape[:2]
-    left, right, bottom, top = extent
-
-    # Build pixel-centre lon/lat grids (radians).
-    lons = np.radians(np.linspace(left,   right, w, endpoint=False) + (right - left) / (2 * w))
-    lats = np.radians(np.linspace(top,    bottom, h, endpoint=False) + (bottom - top) / (2 * h))
-    lon_grid, lat_grid = np.meshgrid(lons, lats)
-
-    clat = np.radians(center_lat)
-    clon = np.radians(center_lon)
-
-    # Great-circle distance via the spherical law of cosines (numerically
-    # stable for angles up to ~π; sufficient here since we only care about
-    # values near π/2).
-    cos_d = (
-        np.sin(clat) * np.sin(lat_grid)
-        + np.cos(clat) * np.cos(lat_grid) * np.cos(lon_grid - clon)
-    )
-    # cos_d = 1 at center, 0 at limb (90°), negative beyond.
-    threshold = np.cos(np.radians(90.0 - margin_deg))  # cos of (90 - margin)
-
-    alpha = np.where(cos_d >= threshold, 255, 0).astype(np.uint8)
-
-    rgba = np.empty((h, w, 4), dtype=np.uint8)
-    rgba[:, :, :3] = rgb
-    rgba[:, :, 3]  = alpha
-    return rgba
+    with Image.open(path) as im:
+        if im.mode != "RGBA":
+            im = im.convert("RGBA")
+        arr = np.array(im, dtype=np.uint8)
+    arr[:, :, 3] = np.where(arr[:, :, 3] >= threshold, 255, 0).astype(np.uint8)
+    Image.fromarray(arr, mode="RGBA").save(path)
 
 
 def load_background(
@@ -815,13 +787,22 @@ def build_figure(
         ax = fig.add_subplot(1, n, i + 1, projection=proj)
         ax.set_facecolor(bg_rgba)
 
+        # Hide the orthographic boundary spine.  Cartopy strokes it in black
+        # (~1pt) by default, which renders as a 1-3 px dark ring around the
+        # disc — visible regardless of coastlines/borders/bg.  The spine still
+        # clips the axes content; only its visible stroke is suppressed.
+        # See plans/limb_bleed_avenues.md (option 0).
+        try:
+            ax.spines["geo"].set_edgecolor("none")
+        except (KeyError, AttributeError):
+            outline = getattr(ax, "outline_patch", None)
+            if outline is not None:
+                outline.set_edgecolor("none")
+
         # --- Background layer (zorder 0) -----------------------------------
         if bg_rgb is not None:
-            # Mask pixels outside the visible hemisphere so bilinear
-            # resampling cannot smear background colour onto the disc edge.
-            bg_masked = _mask_to_hemisphere(bg_rgb, bg_extent, view.lon, view.lat)
             ax.imshow(
-                bg_masked,
+                bg_rgb,
                 origin="upper",
                 extent=bg_extent,
                 transform=ccrs.PlateCarree(),
@@ -1034,6 +1015,8 @@ def run_all_renders(
             )
             fig.savefig(output, dpi=dpi, transparent=transparent, facecolor=fig.get_facecolor())
             plt.close(fig)
+            if transparent:
+                _snap_png_alpha(output)
             print(f"  Saved -> {output}")
 
         # --- Optional icon output ------------------------------------------
@@ -1064,6 +1047,8 @@ def run_all_renders(
                 facecolor=icon_fig.get_facecolor(),
             )
             plt.close(icon_fig)
+            if transparent:
+                _snap_png_alpha(icon_path)
             print(f"  Saved icon → {icon_path}")
 
 
