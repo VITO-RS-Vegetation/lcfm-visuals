@@ -421,10 +421,30 @@ Visible in polar regions outside LCM-10 coverage (>83°N, <60°S) and over ocean
 | Overviews | 2, 4, 8, 16, 32, 64 |
 | Content | World topography + bathymetry composite (Blue Marble style, April 2004) |
 
-### Resampling
+### Resampling (data level — rasterio)
 
 `Resampling.bilinear` (fallback, applied only when the requested downsample factor
 has no exact pre-built overview). Bilinear is appropriate for continuous imagery.
+
+> **Note:** This is the rasterio `Resampling` enum applied when reading the COG
+> (server-side data decimation). It is entirely separate from Matplotlib's display
+> interpolation described below.
+
+### Display interpolation (render level — Matplotlib)
+
+`ax.imshow(..., interpolation=...)` is a **screen-rendering** hint. It controls how
+Matplotlib scales the numpy array to match the output canvas pixels; it does not
+touch the source COG data.
+
+| Value | Effect | Risk |
+|---|---|---|
+| `"bilinear"` | Smooth visual transition between adjacent pixels | **Bleeds** color across reprojection boundaries. At the Orthographic globe limb, ocean (blue) pixels blend into adjacent land pixels producing a visible blue fringe on land edges. |
+| `"nearest"` | No blending — hard pixel edges | Safe for any projection; no color bleeding. Recommended for the background layer. |
+
+**Rule of thumb:** use `interpolation="nearest"` for any layer rendered via Cartopy
+reprojection (Orthographic, Robinson, etc.). The bilinear blending that looks smooth
+in a flat 2-D plot becomes a visible color halo at reprojected boundaries where the
+axis background (transparent or black) is adjacent to image data.
 
 ### Auto-factor calculation
 
