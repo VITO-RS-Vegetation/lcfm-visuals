@@ -1036,10 +1036,52 @@ def run_all_renders(config: dict, names: set[str] | None = None) -> None:
         plt.close(fig)
         print(f"  Saved -> {output}")
 
-        icon_sizes = entry.get("icon_sizes")
+        icon_sizes  = entry.get("icon_sizes")
+        icon_render = entry.get("icon_render", False)
         if icon_sizes:
-            print(f"  Generating icons: {icon_sizes}")
-            save_icon(output, sizes=[int(s) for s in icon_sizes])
+            if icon_render:
+                # Re-run the full pipeline at each icon size so the COG
+                # overview and coastlines are chosen for the target resolution,
+                # rather than downsampling an already-rasterised large image.
+                for size in [int(s) for s in icon_sizes]:
+                    icon_vwd  = _visible_width_deg_for_render(globe_views, size)
+                    icon_bbox = _render_bbox(globe_views, size, asp)
+                    print(f"\n  Re-rendering icon at {size}px ...")
+                    i_rgba, i_extent = _load(
+                        load_data, cog_url, size, icon_vwd, None, qs, icon_bbox
+                    )
+                    i_bg_rgb: np.ndarray | None = None
+                    i_bg_extent: list[float] | None = None
+                    if bg_cog:
+                        i_bg_rgb, i_bg_extent = _load(
+                            load_background, bg_cog, size, icon_vwd, None, qs, icon_bbox
+                        )
+                    i_fig = build_figure(
+                        rgba=i_rgba,
+                        lcm_extent=i_extent,
+                        globe_views=globe_views,
+                        background=background,
+                        globe_size_px=size,
+                        globe_gap_px=0,
+                        dpi=dpi,
+                        bg_rgb=i_bg_rgb,
+                        bg_extent=i_bg_extent,
+                        coastlines=clines,
+                        country_borders=cborders,
+                        border_color=bcol,
+                        border_width=bwidth,
+                        aspect_ratio=asp,
+                    )
+                    icon_out = output.with_name(f"{output.stem}_{size}.png")
+                    i_fig.savefig(
+                        icon_out, dpi=dpi, transparent=transparent,
+                        facecolor=i_fig.get_facecolor(),
+                    )
+                    plt.close(i_fig)
+                    print(f"  Icon {size}×{size} → {icon_out}")
+            else:
+                print(f"  Generating icons (downscale): {icon_sizes}")
+                save_icon(output, sizes=[int(s) for s in icon_sizes])
 
 
 # ---------------------------------------------------------------------------
