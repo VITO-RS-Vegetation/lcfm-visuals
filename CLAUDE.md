@@ -41,6 +41,18 @@ uv run python scripts/orthographic_globe.py --config configs/globes.toml
 
 Run `uv sync` first if the environment is missing or after updating `pyproject.toml`.
 
+### Fast iteration: icon-only mode
+
+When tweaking globe appearance (colors, masking, borders…), test on the icon first — it renders in seconds instead of minutes:
+
+```bash
+uv run python scripts/orthographic_globe.py --config configs/globes.toml --name 1_globe_europe --only-icon
+```
+
+Test on: `images\1_globe_europe_icon.png`
+
+Only run the full render once the icon looks correct.
+
 ---
 
 ## Plans folder (`plans/`)

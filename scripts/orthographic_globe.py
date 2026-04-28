@@ -607,6 +607,60 @@ def load_data(
     return rgba, extent
 
 
+def _mask_to_hemisphere(
+    rgb: np.ndarray,
+    extent: list[float],
+    center_lon: float,
+    center_lat: float,
+    margin_deg: float = 1.5,
+) -> np.ndarray:
+    """Return an RGBA array with alpha=0 for pixels beyond the visible hemisphere.
+
+    Pixels whose great-circle distance from ``(center_lon, center_lat)`` is
+    ≥ ``90° − margin_deg`` are made fully transparent.  This prevents bilinear
+    resampling artifacts ("blue ring") at the orthographic limb where Cartopy
+    warps pixels from just outside the visible hemisphere onto the disc edge.
+
+    Args:
+        rgb: ``(H, W, 3)`` uint8 RGB array.
+        extent: ``[left, right, bottom, top]`` in degrees (PlateCarree).
+        center_lon: Central longitude of the orthographic projection (degrees).
+        center_lat: Central latitude of the orthographic projection (degrees).
+        margin_deg: Pixels within this many degrees of the limb are also
+            masked; guards against sub-pixel interpolation fringe.
+
+    Returns:
+        ``(H, W, 4)`` uint8 RGBA array.
+    """
+    h, w = rgb.shape[:2]
+    left, right, bottom, top = extent
+
+    # Build pixel-centre lon/lat grids (radians).
+    lons = np.radians(np.linspace(left,   right, w, endpoint=False) + (right - left) / (2 * w))
+    lats = np.radians(np.linspace(top,    bottom, h, endpoint=False) + (bottom - top) / (2 * h))
+    lon_grid, lat_grid = np.meshgrid(lons, lats)
+
+    clat = np.radians(center_lat)
+    clon = np.radians(center_lon)
+
+    # Great-circle distance via the spherical law of cosines (numerically
+    # stable for angles up to ~π; sufficient here since we only care about
+    # values near π/2).
+    cos_d = (
+        np.sin(clat) * np.sin(lat_grid)
+        + np.cos(clat) * np.cos(lat_grid) * np.cos(lon_grid - clon)
+    )
+    # cos_d = 1 at center, 0 at limb (90°), negative beyond.
+    threshold = np.cos(np.radians(90.0 - margin_deg))  # cos of (90 - margin)
+
+    alpha = np.where(cos_d >= threshold, 255, 0).astype(np.uint8)
+
+    rgba = np.empty((h, w, 4), dtype=np.uint8)
+    rgba[:, :, :3] = rgb
+    rgba[:, :, 3]  = alpha
+    return rgba
+
+
 def load_background(
     cog_url: str,
     globe_size_px: int,
@@ -763,8 +817,11 @@ def build_figure(
 
         # --- Background layer (zorder 0) -----------------------------------
         if bg_rgb is not None:
+            # Mask pixels outside the visible hemisphere so bilinear
+            # resampling cannot smear background colour onto the disc edge.
+            bg_masked = _mask_to_hemisphere(bg_rgb, bg_extent, view.lon, view.lat)
             ax.imshow(
-                bg_rgb,
+                bg_masked,
                 origin="upper",
                 extent=bg_extent,
                 transform=ccrs.PlateCarree(),
@@ -882,7 +939,11 @@ def _parse_globe_views(entry: dict) -> list[GlobeView]:
     return [GlobeView(lon=float(c[0]), lat=float(c[1])) for c in entry["globe_centers"]]
 
 
-def run_all_renders(config: dict, names: set[str] | None = None) -> None:
+def run_all_renders(
+    config: dict,
+    names: set[str] | None = None,
+    only_icon: bool = False,
+) -> None:
     """Execute every ``[[render]]`` entry in a loaded TOML config.
 
     COG data is loaded per-render at the optimal resolution for that render's
@@ -893,6 +954,8 @@ def run_all_renders(config: dict, names: set[str] | None = None) -> None:
     Args:
         config: Parsed TOML dictionary (from :func:`load_config`).
         names: Optional set of render names to execute.  ``None`` runs all.
+        only_icon: When ``True``, skip the main PNG and only produce the icon
+            (entries without ``icon_output`` are silently skipped).
     """
     g = config.get("global", {})
 
@@ -951,26 +1014,27 @@ def run_all_renders(config: dict, names: set[str] | None = None) -> None:
         if bg_cog:
             bg_rgb, bg_extent = _load(load_background, bg_cog, globe_size, vwd, bg_ds, qs, bbox)
 
-        fig = build_figure(
-            rgba=rgba,
-            lcm_extent=lcm_extent,
-            globe_views=globe_views,
-            background=background,
-            globe_size_px=globe_size,
-            globe_gap_px=globe_gap,
-            dpi=dpi,
-            bg_rgb=bg_rgb,
-            bg_extent=bg_extent,
-            coastlines=clines,
-            country_borders=cborders,
-            border_color=bcol,
-            border_width=bwidth,
-            aspect_ratio=asp,
-        )
         transparent = background == "transparent"
-        fig.savefig(output, dpi=dpi, transparent=transparent, facecolor=fig.get_facecolor())
-        plt.close(fig)
-        print(f"  Saved -> {output}")
+        if not only_icon:
+            fig = build_figure(
+                rgba=rgba,
+                lcm_extent=lcm_extent,
+                globe_views=globe_views,
+                background=background,
+                globe_size_px=globe_size,
+                globe_gap_px=globe_gap,
+                dpi=dpi,
+                bg_rgb=bg_rgb,
+                bg_extent=bg_extent,
+                coastlines=clines,
+                country_borders=cborders,
+                border_color=bcol,
+                border_width=bwidth,
+                aspect_ratio=asp,
+            )
+            fig.savefig(output, dpi=dpi, transparent=transparent, facecolor=fig.get_facecolor())
+            plt.close(fig)
+            print(f"  Saved -> {output}")
 
         # --- Optional icon output ------------------------------------------
         icon_output_str = entry.get("icon_output")
@@ -1026,12 +1090,22 @@ def main() -> None:
         metavar="NAME",
         help="Only render entries whose 'name' field matches one of these values.",
     )
+    parser.add_argument(
+        "--only-icon",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip the main PNG and only produce the icon output for each entry "
+            "that has 'icon_output' defined.  Useful for fast iteration on the "
+            "icon without re-saving the full-resolution globe PNG."
+        ),
+    )
     args = parser.parse_args()
 
     if args.config:
         config = load_config(args.config)
         name_filter = set(args.name) if args.name else None
-        run_all_renders(config, names=name_filter)
+        run_all_renders(config, names=name_filter, only_icon=args.only_icon)
         return
 
     # Fallback: use hardcoded module-level constants.
