@@ -67,12 +67,14 @@ from pathlib import Path
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import imageio.v3 as iio
 import matplotlib.path as mpath
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
 import rasterio.windows as rwin
 from rasterio.enums import Resampling
+from scipy.ndimage import zoom as nd_zoom
 
 # ---------------------------------------------------------------------------
 # Globe view
@@ -843,6 +845,68 @@ def build_figure(
 
 
 # ---------------------------------------------------------------------------
+# Icon generation
+# ---------------------------------------------------------------------------
+
+def save_icon(
+    source: Path,
+    sizes: list[int],
+    output_dir: Path | None = None,
+    stem: str | None = None,
+) -> list[Path]:
+    """Generate PNG icon(s) at square pixel sizes from a source PNG.
+
+    Uses pre-multiplied alpha bicubic interpolation so transparent-background
+    globe images resize cleanly without dark fringing at the circle edge.
+
+    Args:
+        source: Path to the source PNG file.
+        sizes: List of square icon sizes in pixels (e.g. ``[256, 512, 1024]``).
+        output_dir: Output directory.  Defaults to ``source.parent``.
+        stem: Filename stem for the output icons.  Defaults to ``source.stem``.
+
+    Returns:
+        List of paths to the generated icon PNG files.
+    """
+    img = iio.imread(source)           # (H, W, C) uint8
+    h, w = img.shape[:2]
+
+    if output_dir is None:
+        output_dir = source.parent
+    if stem is None:
+        stem = source.stem
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    has_alpha = img.ndim == 3 and img.shape[2] == 4
+    paths: list[Path] = []
+    for size in sorted(sizes, reverse=True):
+        zy, zx = size / h, size / w
+        if has_alpha:
+            # Pre-multiply RGB by alpha before interpolation to prevent dark
+            # halos where the globe circle meets transparent corners.
+            alpha = img[..., 3:4].astype(np.float32) / 255.0
+            rgb   = img[..., :3].astype(np.float32) * alpha
+            rgb_z   = nd_zoom(rgb,   (zy, zx, 1.0), order=3)
+            alpha_z = nd_zoom(alpha, (zy, zx, 1.0), order=3)
+            safe_a  = np.where(alpha_z > 1e-6, alpha_z, 1.0)
+            rgb_out = np.clip(rgb_z / safe_a, 0, 255).astype(np.uint8)
+            a_out   = np.clip(alpha_z * 255,  0, 255).astype(np.uint8)
+            icon = np.concatenate([rgb_out, a_out], axis=-1)
+        else:
+            zoom_factors = (zy, zx, 1.0) if img.ndim == 3 else (zy, zx)
+            icon = np.clip(
+                nd_zoom(img.astype(np.float32), zoom_factors, order=3), 0, 255
+            ).astype(np.uint8)
+
+        out = output_dir / f"{stem}_{size}.png"
+        iio.imwrite(out, icon)
+        paths.append(out)
+        print(f"  Icon {size}×{size} → {out}")
+
+    return paths
+
+
+# ---------------------------------------------------------------------------
 # Config I/O
 # ---------------------------------------------------------------------------
 
@@ -972,6 +1036,11 @@ def run_all_renders(config: dict, names: set[str] | None = None) -> None:
         plt.close(fig)
         print(f"  Saved -> {output}")
 
+        icon_sizes = entry.get("icon_sizes")
+        if icon_sizes:
+            print(f"  Generating icons: {icon_sizes}")
+            save_icon(output, sizes=[int(s) for s in icon_sizes])
+
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -996,7 +1065,31 @@ def main() -> None:
         metavar="NAME",
         help="Only render entries whose 'name' field matches one of these values.",
     )
+    parser.add_argument(
+        "--icon-from",
+        type=Path,
+        metavar="PNG",
+        help=(
+            "Generate icon PNG(s) from an existing PNG and exit "
+            "(no rendering required)."
+        ),
+    )
+    parser.add_argument(
+        "--icon-sizes",
+        type=lambda s: [int(x) for x in s.split(",")],
+        default="256,512,1024",
+        metavar="SIZES",
+        help=(
+            "Comma-separated square icon sizes in pixels used with "
+            "--icon-from or icon_sizes in the TOML config "
+            "(default: 256,512,1024)."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.icon_from:
+        save_icon(args.icon_from, sizes=args.icon_sizes)
+        return
 
     if args.config:
         config = load_config(args.config)
