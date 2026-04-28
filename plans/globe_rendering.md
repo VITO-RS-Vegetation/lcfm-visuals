@@ -13,13 +13,6 @@ Two distinct artifacts appear at the orthographic disc limb if not handled:
 
 Both fixes are independent and complementary. Always apply both for clean output on a transparent canvas.
 
-## Approaches that do not work — do not retry
-
-- **Alpha-mask the bg raster to the visible hemisphere** before plotting. Bilinear resampling of the masked alpha edge introduces a *wider* semi-transparent ring at the disc edge.
-- **Set axes facecolor to an opaque deep-ocean RGBA**. Only affects what is behind the bg image inside the disc; the spine stroke and the bilinear rim are drawn on top.
-- **Set figure facecolor opaque + save with `transparent=False`**. Removes the AA-against-transparency rim but the spine stroke is still visible, and the PNG loses its transparent corners.
-- **Disable AA on the spine** (`ax.spines['geo'].set_antialiased(False)`). Sharpens the *stroke* but does not remove it.
-
 ## Debugging visual artifacts
 
 Sample actual pixel colours/alphas at suspected edges before theorising. The spine-stroke ring was misdiagnosed as "background bleed" for several iterations because the working hypothesis was set without checking whether the visible ring was solid black or partial-alpha ocean.
