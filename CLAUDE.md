@@ -65,3 +65,4 @@ Reference documents, design decisions, and data specifications for this project.
 | [`GLOBE_VIZ_PLAN.md`](plans/GLOBE_VIZ_PLAN.md) | Implementation plan for the interactive rotatable globe built with MapLibre GL JS (`html/globe_maplibre.html`). |
 | [`GLOBE_VIZ_CESIUM.md`](plans/GLOBE_VIZ_CESIUM.md) | Implementation plan for an equivalent interactive 3D globe built with CesiumJS, mirroring the MapLibre version in features and UI. |
 | [`lcm10_enhancements.md`](plans/lcm10_enhancements.md) | Planned enhancements to the LCM-10 visualisation layer (higher-resolution tiles, etc.). |
+| [`globe_rendering.md`](plans/globe_rendering.md) | Cartopy/Matplotlib gotchas for clean orthographic disc edges (spine stroke, alpha rim) and approaches that don't work. |
