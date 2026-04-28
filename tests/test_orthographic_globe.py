@@ -166,7 +166,7 @@ def test_config_render_names():
     with open(CONFIG_PATH, "rb") as fh:
         config = tomllib.load(fh)
     names = {r["name"] for r in config["render"]}
-    assert names == {"1_globe", "2_globes", "3_globes", "maplibre_link"}
+    assert names == {"1_globe_europe", "2_globes", "3_globes", "maplibre_link"}
 
 
 def test_config_global_section_present():
@@ -202,7 +202,7 @@ def test_parse_globe_views_from_maplibre_url():
 def test_parse_globe_views_1_globe_config():
     with open(CONFIG_PATH, "rb") as fh:
         config = tomllib.load(fh)
-    entry = next(r for r in config["render"] if r.get("name") == "1_globe")
+    entry = next(r for r in config["render"] if r.get("name") == "1_globe_europe")
     views = _parse_globe_views(entry)
     assert len(views) == 1
     assert views[0].zoom is None
@@ -402,3 +402,35 @@ def test_render_bbox_all_zoomed_returns_union():
 def test_render_bbox_single_zoomed_matches_bbox_for_view():
     view = GlobeView(lon=2.35, lat=48.85, zoom=5.0)
     assert _render_bbox([view], 2100) == _bbox_for_view(view, 2100)
+
+
+# ---------------------------------------------------------------------------
+# Icon config keys
+# ---------------------------------------------------------------------------
+
+def test_config_1_globe_europe_has_icon_output():
+    with open(CONFIG_PATH, "rb") as fh:
+        config = tomllib.load(fh)
+    entry = next(r for r in config["render"] if r.get("name") == "1_globe_europe")
+    assert "icon_output" in entry
+    assert entry["icon_output"].endswith(".png")
+
+
+def test_config_1_globe_europe_icon_size_px():
+    with open(CONFIG_PATH, "rb") as fh:
+        config = tomllib.load(fh)
+    entry = next(r for r in config["render"] if r.get("name") == "1_globe_europe")
+    assert "icon_size_px" in entry
+    assert isinstance(entry["icon_size_px"], int)
+    assert entry["icon_size_px"] > 0
+
+
+def test_config_icon_size_single_integer():
+    """icon_size_px must be a single integer (not a list), guaranteeing square output."""
+    with open(CONFIG_PATH, "rb") as fh:
+        config = tomllib.load(fh)
+    for entry in config.get("render", []):
+        if "icon_size_px" in entry:
+            assert isinstance(entry["icon_size_px"], int), (
+                f"icon_size_px in '{entry.get('name')}' must be a plain int"
+            )

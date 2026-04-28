@@ -28,6 +28,7 @@ _MOCKED_MODULES = [
     "cartopy.crs",
     "cartopy.feature",
     "matplotlib",
+    "matplotlib.path",
     "matplotlib.pyplot",
     "rasterio",
     "rasterio.enums",
