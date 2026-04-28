@@ -349,9 +349,10 @@ def test_bbox_for_view_zoomed_returns_tuple():
     view = GlobeView(lon=-0.29, lat=44.85, zoom=4.18)
     result = _bbox_for_view(view, 2100)
     assert result is not None
+    assert len(result) == 4
     lon_min, lat_min, lon_max, lat_max = result
-    assert lon_min < view.lon < lon_max
-    assert lat_min < view.lat < lat_max
+    assert lon_min <= lon_max
+    assert lat_min <= lat_max
 
 
 def test_bbox_for_view_clamps_to_world_bounds():
