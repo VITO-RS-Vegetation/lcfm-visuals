@@ -831,8 +831,16 @@ def build_figure(
             ])
             ax.set_boundary(rect, transform=proj)
         else:
-            # Full circular globe (Cartopy default circular boundary).
+            # Full circular globe — set extent then enforce a hard circular
+            # clip so imshow rasters don't bleed outside the globe limb.
             ax.set_global()
+            theta = np.linspace(0, 2 * np.pi, 200)
+            circle_path = mpath.Path(
+                np.column_stack(
+                    [0.5 + 0.5 * np.sin(theta), 0.5 + 0.5 * np.cos(theta)]
+                )
+            )
+            ax.set_boundary(circle_path, transform=ax.transAxes)
 
     fig.subplots_adjust(
         left=left_frac, right=right_frac,
