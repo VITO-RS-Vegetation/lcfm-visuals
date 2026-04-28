@@ -32,6 +32,8 @@ border_width         = 0.4
 name          = "1_globe_europe"
 output        = "images/1_globe_europe.png"
 globe_centers = [[25.0, 30.0]]
+icon_output   = "images/1_globe_europe_icon.png"
+icon_size_px  = 256
 
 # ---------------------------------------------------------------------------
 # 2 globes — Western + Eastern Hemispheres (default layout)

@@ -972,6 +972,36 @@ def run_all_renders(config: dict, names: set[str] | None = None) -> None:
         plt.close(fig)
         print(f"  Saved -> {output}")
 
+        # --- Optional icon output ------------------------------------------
+        icon_output_str = entry.get("icon_output")
+        if icon_output_str:
+            icon_size = entry.get("icon_size_px", 256)
+            icon_path = Path(icon_output_str)
+            icon_path.parent.mkdir(parents=True, exist_ok=True)
+            print(f"  Building icon ({icon_size}×{icon_size}px) → {icon_path} ...")
+            icon_fig = build_figure(
+                rgba=rgba,
+                lcm_extent=lcm_extent,
+                globe_views=globe_views[:1],
+                background=background,
+                globe_size_px=icon_size,
+                globe_gap_px=0,
+                dpi=dpi,
+                bg_rgb=bg_rgb,
+                bg_extent=bg_extent,
+                coastlines=False,
+                country_borders=False,
+                border_color=bcol,
+                border_width=bwidth,
+                aspect_ratio=1.0,
+            )
+            icon_fig.savefig(
+                icon_path, dpi=dpi, transparent=transparent,
+                facecolor=icon_fig.get_facecolor(),
+            )
+            plt.close(icon_fig)
+            print(f"  Saved icon → {icon_path}")
+
 
 # ---------------------------------------------------------------------------
 # Entry point
