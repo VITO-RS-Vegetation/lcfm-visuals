@@ -10,7 +10,7 @@ Interactive globe visualizations and scripts for the LCFM project.
 
 Live site (auto-deploys on push to `main`):
 
-[https://vito-rs-vegetation.github.io/lcfm-visuals/](https://vito-rs-vegetation.github.io/lcfm-visuals/)
+[https://vito-rs-vegetation.github.io/lcfm-visuals/#3.15/26.59/14.63](https://vito-rs-vegetation.github.io/lcfm-visuals/#3.15/26.59/14.63)
 
 GitHack (per-commit preview, useful for testing before merging):
 
