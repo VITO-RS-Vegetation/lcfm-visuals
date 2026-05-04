@@ -8,7 +8,11 @@ Interactive globe visualizations and scripts for the LCFM project.
 
 **`html/globe_maplibre.html`** — production MapLibre GL JS globe with the LCM-10 land cover layer over USGS imagery.
 
-Open directly in a browser via GitHack (no build step required):
+Live site (auto-deploys on push to `main`):
+
+[https://vito-rs-vegetation.github.io/lcfm-visuals/](https://vito-rs-vegetation.github.io/lcfm-visuals/)
+
+GitHack (per-commit preview, useful for testing before merging):
 
 [https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_maplibre.html](https://raw.githack.com/VITO-RS-Vegetation/lcfm-visuals/main/html/globe_maplibre.html)
 
