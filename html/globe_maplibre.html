@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LCM-10 Globe — MapLibre GL JS</title>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.css" />
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       background: #000;
@@ -38,8 +43,14 @@
       color: #ccc;
       transition: color 0.15s;
     }
-    #legend-toggle:hover { color: #fff; }
-    #legend-toggle svg { display: block; }
+
+    #legend-toggle:hover {
+      color: #fff;
+    }
+
+    #legend-toggle svg {
+      display: block;
+    }
 
     /* Borders toggle button */
     #borders-toggle {
@@ -60,9 +71,19 @@
       color: #ccc;
       transition: color 0.15s, background 0.15s;
     }
-    #borders-toggle:hover { color: #fff; }
-    #borders-toggle.active { color: #fff; background: rgba(40, 90, 140, 0.85); }
-    #borders-toggle svg { display: block; }
+
+    #borders-toggle:hover {
+      color: #fff;
+    }
+
+    #borders-toggle.active {
+      color: #fff;
+      background: rgba(40, 90, 140, 0.85);
+    }
+
+    #borders-toggle svg {
+      display: block;
+    }
 
     /* Legend panel */
     #legend {
@@ -81,6 +102,7 @@
       backdrop-filter: blur(4px);
       transition: opacity 0.2s, visibility 0.2s;
     }
+
     #legend.hidden {
       opacity: 0;
       visibility: hidden;
@@ -106,18 +128,53 @@
       height: 16px;
       border-radius: 3px;
       flex-shrink: 0;
-      border: 1px solid rgba(255,255,255,0.15);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* Export button */
+    #export-btn {
+      position: absolute;
+      top: 222px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      background: rgba(15, 15, 15, 0.85);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      backdrop-filter: blur(4px);
+      color: #ccc;
+      transition: color 0.15s;
+    }
+
+    #export-btn:hover {
+      color: #fff;
+    }
+
+    #export-btn svg {
+      display: block;
     }
 
     /* Attribution — dark theme overrides */
     .maplibregl-ctrl-attrib {
-      background: rgba(0,0,0,0.6) !important;
+      background: rgba(0, 0, 0, 0.6) !important;
       color: #ccc !important;
     }
-    .maplibregl-ctrl-attrib a { color: #9bd !important; }
-    .maplibregl-ctrl-attrib-button { filter: invert(0.8); }
+
+    .maplibregl-ctrl-attrib a {
+      color: #9bd !important;
+    }
+
+    .maplibregl-ctrl-attrib-button {
+      filter: invert(0.8);
+    }
   </style>
 </head>
+
 <body>
   <div id="map"></div>
 
@@ -130,46 +187,82 @@
     document.getElementById('eye-shut').style.display  = open ? 'block' : 'none';
   ">
     <!-- eye-open (visible by default) -->
-    <svg id="eye-open" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
+    <svg id="eye-open" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
     <!-- eye-shut (hidden by default) -->
-    <svg id="eye-shut" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-      <line x1="1" y1="1" x2="23" y2="23"/>
+    <svg id="eye-shut" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  </button>
+
+  <!-- Export: save current globe view as PNG -->
+  <button id="export-btn" title="Export globe as PNG">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
     </svg>
   </button>
 
   <!-- Borders toggle: show/hide country border lines -->
   <button id="borders-toggle" class="active" title="Toggle country borders">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-         viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
-      <line x1="8" y1="2" x2="8" y2="18"/>
-      <line x1="16" y1="6" x2="16" y2="22"/>
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+      <line x1="8" y1="2" x2="8" y2="18" />
+      <line x1="16" y1="6" x2="16" y2="22" />
     </svg>
   </button>
 
   <div id="legend">
     <h3>LCM-10 Land Cover (2020)</h3>
-    <div class="legend-item"><div class="swatch" style="background:#006400"></div><span>Tree cover</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#FFBB22"></div><span>Shrubland</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#FFFF4C"></div><span>Grassland</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#F096FF"></div><span>Cropland</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#0096A0"></div><span>Herbaceous wetland</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#00CF75"></div><span>Mangroves</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#FAE6A0"></div><span>Moss and lichen</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#B4B4B4"></div><span>Bare / sparse vegetation</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#FA0000"></div><span>Built-up</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#0064C8"></div><span>Permanent water bodies</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#F0F0F0"></div><span>Snow and ice</span></div>
-    <div class="legend-item"><div class="swatch" style="background:#0A0A0A;border-color:rgba(255,255,255,0.4)"></div><span>Unclassifiable</span></div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#006400"></div><span>Tree cover</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#FFBB22"></div><span>Shrubland</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#FFFF4C"></div><span>Grassland</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#F096FF"></div><span>Cropland</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#0096A0"></div><span>Herbaceous wetland</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#00CF75"></div><span>Mangroves</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#FAE6A0"></div><span>Moss and lichen</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#B4B4B4"></div><span>Bare / sparse vegetation</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#FA0000"></div><span>Built-up</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#0064C8"></div><span>Permanent water bodies</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#F0F0F0"></div><span>Snow and ice</span>
+    </div>
+    <div class="legend-item">
+      <div class="swatch" style="background:#0A0A0A;border-color:rgba(255,255,255,0.4)"></div>
+      <span>Unclassifiable</span>
+    </div>
     <hr style="border-color:rgba(255,255,255,0.12);margin:8px 0 6px" />
     <div style="font-size:10px;color:#888;line-height:1.4">
-      © VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/" style="color:#9bd" target="_blank">CC-BY 4.0</a>
+      © VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a
+        href="https://creativecommons.org/licenses/by/4.0/" style="color:#9bd" target="_blank">CC-BY 4.0</a>
     </div>
   </div>
 
@@ -191,173 +284,233 @@
     })();
 
     function initMap() {
-    // ── LCM-10 COG URL (public S3, HTTP range-requests confirmed working) ──
-    const COG_URL = encodeURIComponent(
-      'https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/LCM-10_v100_2020_MAP_lat-lon.tif'
-    );
+      // ── LCM-10 COG URL (public S3, HTTP range-requests confirmed working) ──
+      const COG_URL = encodeURIComponent(
+        'https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/LCM-10_v100_2020_MAP_lat-lon.tif'
+      );
 
-    // ── Categorical colormap (value → [R, G, B, A]) ──
-    // 255 (no-data) is included here as fully transparent; we no longer
-    // request the alpha band (bidx=2) because titiler's colormap parameter
-    // requires exactly one input band — combining bidx=1&bidx=2 with colormap
-    // causes a 422 Unprocessable Content error.
-    const COLORMAP = encodeURIComponent(JSON.stringify({
-      10:  [0,   100,   0, 255],  // Tree cover
-      20:  [255, 187,  34, 255],  // Shrubland
-      30:  [255, 255,  76, 255],  // Grassland
-      40:  [240, 150, 255, 255],  // Cropland
-      50:  [0,   150, 160, 255],  // Herbaceous wetland
-      60:  [0,   207, 117, 255],  // Mangroves
-      70:  [250, 230, 160, 255],  // Moss and lichen
-      80:  [180, 180, 180, 255],  // Bare/sparse vegetation
-      90:  [250,   0,   0, 255],  // Built-up
-      100: [0,   100, 200, 255],  // Permanent water bodies
-      110: [240, 240, 240, 255],  // Snow and ice
-      254: [10,   10,  10, 255],  // Unclassifiable
-      255: [0,    0,   0,   0],   // No-data → fully transparent
-    }));
+      // ── Categorical colormap (value → [R, G, B, A]) ──
+      // 255 (no-data) is included here as fully transparent; we no longer
+      // request the alpha band (bidx=2) because titiler's colormap parameter
+      // requires exactly one input band — combining bidx=1&bidx=2 with colormap
+      // causes a 422 Unprocessable Content error.
+      const COLORMAP = encodeURIComponent(JSON.stringify({
+        10: [0, 100, 0, 255],  // Tree cover
+        20: [255, 187, 34, 255],  // Shrubland
+        30: [255, 255, 76, 255],  // Grassland
+        40: [240, 150, 255, 255],  // Cropland
+        50: [0, 150, 160, 255],  // Herbaceous wetland
+        60: [0, 207, 117, 255],  // Mangroves
+        70: [250, 230, 160, 255],  // Moss and lichen
+        80: [180, 180, 180, 255],  // Bare/sparse vegetation
+        90: [250, 0, 0, 255],  // Built-up
+        100: [0, 100, 200, 255],  // Permanent water bodies
+        110: [240, 240, 240, 255],  // Snow and ice
+        254: [10, 10, 10, 255],  // Unclassifiable
+        255: [0, 0, 0, 0],   // No-data → fully transparent
+      }));
 
-    // ── LCM-10 tile sources: COG (low zoom) + WMTS (high zoom) ──
-    // Switch at z=6: WMTS coverage starts at z6, so switch at first guaranteed WMTS zoom.
-    const LCM10_SWITCH_ZOOM = 6;
+      // ── LCM-10 tile sources: COG (low zoom) + WMTS (high zoom) ──
+      // Switch at z=6: WMTS coverage starts at z6, so switch at first guaranteed WMTS zoom.
+      const LCM10_SWITCH_ZOOM = 6;
 
-    // bidx=1 only: colormap maps band 1 values to RGBA (including 255→transparent).
-    const LCM10_COG_TILES =
-      'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
-      + `?url=${COG_URL}`
-      + '&bidx=1'
-      + `&colormap=${COLORMAP}`
-      + '&tilesize=512'
-      + '&resampling=mode';
+      // bidx=1 only: colormap maps band 1 values to RGBA (including 255→transparent).
+      const LCM10_COG_TILES =
+        'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
+        + `?url=${COG_URL}`
+        + '&bidx=1'
+        + `&colormap=${COLORMAP}`
+        + '&tilesize=512'
+        + '&resampling=mode';
 
-    const LCM10_WMTS_TILES =
-      'https://wmts.terrascope.be/wmts'
-      + '?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
-      + '&LAYER=lcfm-lcm-10_map&STYLE=default&FORMAT=image/png'
-      + '&TILEMATRIXSET=EPSG:3857'
-      + '&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}'
-      + '&TIME=2020-01-01';
+      const LCM10_WMTS_TILES =
+        'https://wmts.terrascope.be/wmts'
+        + '?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+        + '&LAYER=lcfm-lcm-10_map&STYLE=default&FORMAT=image/png'
+        + '&TILEMATRIXSET=EPSG:3857'
+        + '&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}'
+        + '&TIME=2020-01-01';
 
-    // ── Blue Marble — USGS WMS 1.3.0, CRS=EPSG:3857 ──
-    // WMS 1.3.0 uses CRS= (instead of SRS= in 1.1.x) and {bbox-epsg-3857}
-    // which MapLibre substitutes natively — no custom protocol needed.
-    // EPSG:3857 tiles align perfectly with MapLibre's internal WebMercator
-    // tile grid, avoiding the seam/slit artifacts that occur when requesting
-    // equirectangular (EPSG:4326) images to fill Mercator tile slots.
-    const BLUE_MARBLE_TILES =
-      'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer'
-      + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0'
-      + '&LAYERS=0&STYLES=&FORMAT=image/png&TRANSPARENT=false'
-      + '&CRS=EPSG:3857&WIDTH=256&HEIGHT=256'
-      + '&BBOX={bbox-epsg-3857}';
+      // ── Blue Marble — USGS WMS 1.3.0, CRS=EPSG:3857 ──
+      // WMS 1.3.0 uses CRS= (instead of SRS= in 1.1.x) and {bbox-epsg-3857}
+      // which MapLibre substitutes natively — no custom protocol needed.
+      // EPSG:3857 tiles align perfectly with MapLibre's internal WebMercator
+      // tile grid, avoiding the seam/slit artifacts that occur when requesting
+      // equirectangular (EPSG:4326) images to fill Mercator tile slots.
+      const BLUE_MARBLE_TILES =
+        'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer'
+        + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0'
+        + '&LAYERS=0&STYLES=&FORMAT=image/png&TRANSPARENT=false'
+        + '&CRS=EPSG:3857&WIDTH=256&HEIGHT=256'
+        + '&BBOX={bbox-epsg-3857}';
 
-    // ── Map initialisation ──
-    const map = new maplibregl.Map({
-      container: 'map',
-      attributionControl: false,   // added manually below with compact:true
-      hash: true,                  // syncs #zoom/lat/lng/bearing/pitch to URL
-      style: {
-        version: 8,
-        projection: { type: 'globe' },   // MapLibre GL JS v5+
-        sources: {},
-        layers: [],
-        sky: {
-          // atmosphere-blend: 0 disables the atmospheric halo around the globe
-          // edge. With blend > 0 a bright arc/sliver appears at the globe limb
-          // (most visible top-left at default zoom/center). For a data viz with
-          // a flat raster overlay the glow adds no value and obscures the globe
-          // boundary; keeping it at 0 gives a clean uniform appearance.
-          'atmosphere-blend': 0,
+      // ── Map initialisation ──
+      const map = new maplibregl.Map({
+        container: 'map',
+        attributionControl: false,   // added manually below with compact:true
+        hash: true,                  // syncs #zoom/lat/lng/bearing/pitch to URL
+        style: {
+          version: 8,
+          projection: { type: 'globe' },   // MapLibre GL JS v5+
+          sources: {},
+          layers: [],
+          sky: {
+            // atmosphere-blend: 0 disables the atmospheric halo around the globe
+            // edge. With blend > 0 a bright arc/sliver appears at the globe limb
+            // (most visible top-left at default zoom/center). For a data viz with
+            // a flat raster overlay the glow adds no value and obscures the globe
+            // boundary; keeping it at 0 gives a clean uniform appearance.
+            'atmosphere-blend': 0,
+          },
+          // No 'light' property: the directional sun light (anchor:'map') lit
+          // only one hemisphere, giving a half-dark globe. Omitting it gives
+          // uniform illumination across the full sphere.
         },
-        // No 'light' property: the directional sun light (anchor:'map') lit
-        // only one hemisphere, giving a half-dark globe. Omitting it gives
-        // uniform illumination across the full sphere.
-      },
-      center: [10, 30],
-      zoom: 1.5,
-    });
-
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
-    map.addControl(new maplibregl.GlobeControl(), 'top-right');
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-
-    map.on('load', () => {
-      // ── Layer 1: Blue Marble (background) ──
-      map.addSource('blue-marble', {
-        type: 'raster',
-        tiles: [BLUE_MARBLE_TILES],
-        tileSize: 256,
-        attribution: '© USGS',
-      });
-      map.addLayer({
-        id: 'blue-marble',
-        type: 'raster',
-        source: 'blue-marble',
+        center: [10, 30],
+        zoom: 1.5,
+        preserveDrawingBuffer: true,  // required for canvas.toBlob() / toDataURL()
       });
 
-      // ── Layer 2: LCM-10 land cover (foreground) ──
-      map.addSource('lcm10-cog', {
-        type: 'raster',
-        tiles: [LCM10_COG_TILES],
-        tileSize: 512,
-        maxzoom: 13,
-        attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
-      });
-      map.addLayer({
-        id: 'lcm10-cog',
-        type: 'raster',
-        source: 'lcm10-cog',
-        maxzoom: LCM10_SWITCH_ZOOM,
-        paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+      map.addControl(new maplibregl.NavigationControl(), 'top-right');
+      map.addControl(new maplibregl.GlobeControl(), 'top-right');
+      map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+
+      map.on('load', () => {
+        // ── Layer 1: Blue Marble (background) ──
+        map.addSource('blue-marble', {
+          type: 'raster',
+          tiles: [BLUE_MARBLE_TILES],
+          tileSize: 256,
+          attribution: '© USGS',
+        });
+        map.addLayer({
+          id: 'blue-marble',
+          type: 'raster',
+          source: 'blue-marble',
+        });
+
+        // ── Layer 2: LCM-10 land cover (foreground) ──
+        map.addSource('lcm10-cog', {
+          type: 'raster',
+          tiles: [LCM10_COG_TILES],
+          tileSize: 512,
+          maxzoom: 13,
+          attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
+        });
+        map.addLayer({
+          id: 'lcm10-cog',
+          type: 'raster',
+          source: 'lcm10-cog',
+          maxzoom: LCM10_SWITCH_ZOOM,
+          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+        });
+
+        map.addSource('lcm10-wmts', {
+          type: 'raster',
+          tiles: [LCM10_WMTS_TILES],
+          tileSize: 256,
+          minzoom: LCM10_SWITCH_ZOOM,
+          maxzoom: 14,
+          attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
+        });
+        map.addLayer({
+          id: 'lcm10-wmts',
+          type: 'raster',
+          source: 'lcm10-wmts',
+          minzoom: LCM10_SWITCH_ZOOM,
+          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+        });
+
+        // ── Layer 3: Country borders (Natural Earth 50m) ──
+        map.addSource('country-borders', {
+          type: 'geojson',
+          data: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
+        });
+        map.addLayer({
+          id: 'country-borders',
+          type: 'line',
+          source: 'country-borders',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+            'visibility': 'visible',
+          },
+          paint: {
+            'line-color': '#000000',
+            'line-width': 0.7,
+            'line-opacity': 0.55,
+          },
+        });
       });
 
-      map.addSource('lcm10-wmts', {
-        type: 'raster',
-        tiles: [LCM10_WMTS_TILES],
-        tileSize: 256,
-        minzoom: LCM10_SWITCH_ZOOM,
-        maxzoom: 14,
-        attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
-      });
-      map.addLayer({
-        id: 'lcm10-wmts',
-        type: 'raster',
-        source: 'lcm10-wmts',
-        minzoom: LCM10_SWITCH_ZOOM,
-        paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+      // ── Borders toggle button wiring ──
+      const bordersBtn = document.getElementById('borders-toggle');
+      bordersBtn.addEventListener('click', function () {
+        const current = map.getLayoutProperty('country-borders', 'visibility');
+        const next = (current === 'visible') ? 'none' : 'visible';
+        map.setLayoutProperty('country-borders', 'visibility', next);
+        bordersBtn.classList.toggle('active', next === 'visible');
       });
 
-      // ── Layer 3: Country borders (Natural Earth 50m) ──
-      map.addSource('country-borders', {
-        type: 'geojson',
-        data: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
-      });
-      map.addLayer({
-        id: 'country-borders',
-        type: 'line',
-        source: 'country-borders',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round',
-          'visibility': 'visible',
-        },
-        paint: {
-          'line-color': '#000000',
-          'line-width': 0.7,
-          'line-opacity': 0.55,
-        },
-      });
-    });
+      // ── Export button: capture WebGL canvas as PNG with transparent background ──
+      // HTML overlay elements (legend, buttons, nav controls) live outside the
+      // canvas, so map.getCanvas() already excludes them.
+      // At low zoom the full globe disc is visible; we mask the area outside
+      // the disc to transparent using a circular destination-in composite.
+      document.getElementById('export-btn').addEventListener('click', function () {
+        // Trigger a fresh render and capture inside the render callback so that
+        // the WebGL buffer is guaranteed to be populated when we read it.
+        map.once('render', function () {
+          const src = map.getCanvas();
+          const w = src.width;
+          const h = src.height;
 
-    // ── Borders toggle button wiring ──
-    const bordersBtn = document.getElementById('borders-toggle');
-    bordersBtn.addEventListener('click', function () {
-      const current = map.getLayoutProperty('country-borders', 'visibility');
-      const next = (current === 'visible') ? 'none' : 'visible';
-      map.setLayoutProperty('country-borders', 'visibility', next);
-      bordersBtn.classList.toggle('active', next === 'visible');
-    });
+          // Compute globe radius in physical (CSS × devicePixelRatio) pixels.
+          // MapLibre's globe uses a world circumference of 512 * 2^zoom CSS pixels.
+          const zoom = map.getZoom();
+          const globeRadiusCss = (512 * Math.pow(2, zoom)) / (2 * Math.PI);
+          const dpr = window.devicePixelRatio || 1;
+          const globeRadius = globeRadiusCss * dpr;
+
+          // Create offscreen canvas and copy the WebGL frame.
+          const out = document.createElement('canvas');
+          out.width = w;
+          out.height = h;
+          const ctx = out.getContext('2d');
+          ctx.drawImage(src, 0, 0);
+
+          // If the globe disc fits entirely within the viewport, mask outside it.
+          const halfW = w / 2;
+          const halfH = h / 2;
+          if (globeRadius < halfW && globeRadius < halfH) {
+            // Draw a circular mask on a temporary canvas, then composite.
+            const mask = document.createElement('canvas');
+            mask.width = w;
+            mask.height = h;
+            const mctx = mask.getContext('2d');
+            mctx.beginPath();
+            mctx.arc(halfW, halfH, globeRadius, 0, Math.PI * 2);
+            mctx.fillStyle = '#000';
+            mctx.fill();
+
+            // 'destination-in': keep pixels of 'out' only where mask is opaque.
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.drawImage(mask, 0, 0);
+            ctx.globalCompositeOperation = 'source-over';
+          }
+
+          out.toBlob(function (blob) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'lcm10-globe.png';
+            a.click();
+            URL.revokeObjectURL(a.href);
+          }, 'image/png');
+        }); // end map.once('render')
+        map.triggerRepaint();
+      });
     } // end initMap
   </script>
 </body>
+
 </html>
