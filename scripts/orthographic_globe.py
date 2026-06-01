@@ -15,12 +15,9 @@ shaded-relief image (``ax.stock_img()``).
 
 Globe views
 -----------
-Each panel is described by a :class:`GlobeView` (lon, lat, optional zoom).
-Views can be specified as explicit (lon, lat) pairs **or** parsed directly from
-a MapLibre URL hash (``#zoom/lat/lng``).  When a zoom level is present the
-panel renders a rectangular "screen view" matching what the MapLibre globe
-would show at that camera position; without a zoom the full circular globe is
-shown.
+Each panel is described by a :class:`GlobeView` (lon, lat).
+Views are specified as explicit (lon, lat) pairs and always render the full
+circular globe.
 
 Pixel-based sizing
 ------------------
@@ -59,7 +56,6 @@ refuse the connection.  Work around it with::
 from __future__ import annotations
 
 import argparse
-import math
 import tomllib
 import warnings
 from dataclasses import dataclass
@@ -67,11 +63,9 @@ from pathlib import Path
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import matplotlib.path as mpath
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-import rasterio.windows as rwin
 from PIL import Image
 from rasterio.enums import Resampling
 
@@ -86,79 +80,10 @@ class GlobeView:
     Attributes:
         lon: Central longitude in degrees.
         lat: Central latitude in degrees.
-        zoom: MapLibre zoom level.  ``None`` renders the full circular globe;
-            a numeric value crops the panel as a rectangular "screen view"
-            matching the MapLibre globe at that zoom.
     """
 
     lon: float
     lat: float
-    zoom: float | None = None
-
-
-# ---------------------------------------------------------------------------
-# MapLibre helpers
-# ---------------------------------------------------------------------------
-
-def parse_maplibre_hash(url_or_hash: str) -> tuple[float, float, float]:
-    """Parse a MapLibre URL or bare hash fragment and return (zoom, lat, lng).
-
-    MapLibre hash order: ``#zoom/lat/lng[/bearing/pitch]``.
-    Bearing and pitch are accepted but ignored.
-
-    Args:
-        url_or_hash: A full URL containing a ``#`` fragment, a bare hash
-            string such as ``"#3.47/39.33/3.76"``, or just ``"3.47/39.33/3.76"``.
-
-    Returns:
-        ``(zoom, lat, lng)`` as floats.
-
-    Raises:
-        ValueError: If fewer than three slash-separated values are found.
-    """
-    fragment = url_or_hash.split("#")[-1].lstrip("#")
-    parts = fragment.split("/")
-    if len(parts) < 3:
-        raise ValueError(
-            f"MapLibre hash must contain at least zoom/lat/lng, got: {url_or_hash!r}"
-        )
-    return float(parts[0]), float(parts[1]), float(parts[2])
-
-
-def zoom_to_mpp(zoom: float, lat: float) -> float:
-    """Convert a MapLibre zoom level to metres per pixel at the given latitude.
-
-    Uses standard WebMercator tile math (512-px tiles, equatorial
-    circumference 40 075 016.68 m)::
-
-        mpp = (40_075_016.68 / (512 x 2^zoom)) x cos(lat)
-
-    Args:
-        zoom: MapLibre zoom level (fractional values accepted).
-        lat: Latitude in degrees (cosine-adjusted scale factor).
-
-    Returns:
-        Metres per pixel as a float.
-    """
-    return (40_075_016.68 / (512.0 * (2.0 ** zoom))) * math.cos(math.radians(lat))
-
-
-def globe_view_from_maplibre_url(url_or_hash: str) -> GlobeView:
-    """Create a :class:`GlobeView` from a MapLibre URL or hash fragment.
-
-    Note: MapLibre hash order is ``zoom/lat/lng`` — lat and lng are swapped
-    relative to the ``(lon, lat)`` convention used by the orthographic
-    projection.  This function performs the swap automatically.
-
-    Args:
-        url_or_hash: A MapLibre URL containing a ``#`` fragment, or a bare
-            hash string.
-
-    Returns:
-        A :class:`GlobeView` with ``lon``, ``lat``, and ``zoom`` set.
-    """
-    zoom, lat, lon = parse_maplibre_hash(url_or_hash)
-    return GlobeView(lon=lon, lat=lat, zoom=zoom)
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +116,6 @@ BG_DOWNSAMPLE_FACTOR: int | None = None
 # full-globe renders.  1.0 = 1 source pixel per output pixel (minimum);
 # 2.0 = 2 source pixels per output pixel (sharper; 4x data but still
 #        served from pre-built overviews — no extra network cost per tile).
-# Zoomed renders always use windowed native-resolution reads instead.
 QUALITY_SCALE: float = 2.0
 
 OUTPUT_PATH = Path("orthographic_globe.png")
@@ -200,8 +124,6 @@ OUTPUT_PATH = Path("orthographic_globe.png")
 BACKGROUND = "black"
 
 # Globe panels.  N_GLOBES is derived dynamically from len(GLOBE_VIEWS).
-# Use globe_view_from_maplibre_url() to create a GlobeView from a MapLibre
-# URL hash instead of explicit (lon, lat) pairs.
 GLOBE_VIEWS: list[GlobeView] = [GlobeView(-90.0, 15.0), GlobeView(60.0, 25.0)]
 
 # Panel size and spacing in pixels.
@@ -279,29 +201,18 @@ def apply_colormap(
 def _visible_width_deg_for_render(
     views: list[GlobeView], globe_size_px: int
 ) -> float:
-    """Return the most-demanding visible geographic width across all views.
+    """Return the visible geographic width for the render.
 
-    For views without a zoom (full globe), visible width = 180°.
-    For zoomed views the visible width is computed from zoom level and latitude
-    using standard WebMercator tile math.
-
-    Returns the *minimum* of all views — the most demanding (finest-resolution)
-    case drives the COG overview selection.
+    All views render the full circular globe, so this always returns 180°.
 
     Args:
         views: List of GlobeView objects for this render.
-        globe_size_px: Panel width in pixels.
+        globe_size_px: Panel width in pixels (unused; kept for API consistency).
 
     Returns:
-        Visible width in degrees (> 0, ≤ 180).
+        180.0
     """
-    widths: list[float] = []
-    for v in views:
-        if v.zoom is None:
-            widths.append(180.0)
-        else:
-            widths.append(globe_size_px * zoom_to_mpp(v.zoom, v.lat) / 111_320.0)
-    return min(widths)
+    return 180.0
 
 
 def _optimal_factor(
@@ -545,31 +456,22 @@ def load_data(
     visible_width_deg: float,
     downsample: int | None = None,
     quality_scale: float = 1.0,
-    bbox: tuple[float, float, float, float] | None = None,
 ) -> tuple[np.ndarray, list[float]]:
     """Open the LCM-10 COG and return an RGBA (H, W, 4) array and its extent.
 
     Uses ``Resampling.mode`` as fallback (majority vote — correct for
-    categorical data).
-
-    When ``bbox`` is provided the dataset is read as a geographic window at
-    native resolution via HTTP range requests (zoomed renders).  When
-    ``bbox`` is ``None`` a full-extent pre-built COG overview is selected
-    by ``_optimal_factor`` (full-globe renders).
+    categorical data).  Selects a pre-built COG overview via
+    ``_optimal_factor`` (full-globe renders).
 
     Args:
         cog_url: HTTPS URL or local path to the Cloud-Optimized GeoTIFF.
         globe_size_px: Output panel width in pixels; used to auto-select the
             optimal COG overview when ``downsample`` is ``None``.
         visible_width_deg: Geographic width visible on the panel in degrees
-            (180 for a full globe; smaller for a zoomed view).
+            (180 for a full globe).
         downsample: Integer decimation factor.  ``None`` = auto-select.
-            Ignored when ``bbox`` is set.
         quality_scale: Minimum source-pixels-per-output-pixel ratio passed
-            to ``_optimal_factor``.  Ignored when ``bbox`` is set.
-        bbox: ``(lon_min, lat_min, lon_max, lat_max)`` in degrees.  When set,
-            a windowed native-resolution read is performed instead of a
-            full-extent overview read.
+            to ``_optimal_factor``.
 
     Returns:
         Tuple of (RGBA array, extent) where extent is
@@ -579,25 +481,14 @@ def load_data(
     with rasterio.open(cog_url) as src:
         print(f"  native size : {src.width} x {src.height}")
         print(f"  overviews   : {src.overviews(1)}")
-        if bbox is not None:
-            lon_span = max(bbox[2] - bbox[0], 0.001)
-            lat_span = max(bbox[3] - bbox[1], 0.001)
-            tgt_w = max(256, round(globe_size_px * quality_scale))
-            tgt_h = max(256, round(tgt_w * lat_span / lon_span))
-            out_shape = (src.count, tgt_h, tgt_w)
-            print(f"  target shape: {tgt_w} x {tgt_h} (quality_scale={quality_scale})")
-            data, extent = _read_window_native(
-                src, bbox, out_shape=out_shape, resampling=Resampling.mode
+        b = src.bounds
+        extent = [b.left, b.right, b.bottom, b.top]
+        print(f"  extent      : {extent}")
+        if downsample is None:
+            downsample = _optimal_factor(
+                src, globe_size_px, visible_width_deg, quality_scale
             )
-        else:
-            b = src.bounds
-            extent = [b.left, b.right, b.bottom, b.top]
-            print(f"  extent      : {extent}")
-            if downsample is None:
-                downsample = _optimal_factor(
-                    src, globe_size_px, visible_width_deg, quality_scale
-                )
-            data = _read_overview(src, downsample, Resampling.mode)
+        data = _read_overview(src, downsample, Resampling.mode)
 
     band       = data[0]
     alpha_band = data[1] if data.shape[0] > 1 else np.full_like(band, 255)
@@ -639,29 +530,21 @@ def load_background(
     visible_width_deg: float,
     downsample: int | None = None,
     quality_scale: float = 1.0,
-    bbox: tuple[float, float, float, float] | None = None,
 ) -> tuple[np.ndarray, list[float]]:
     """Open a background imagery COG and return an (H, W, 3) RGB array and extent.
 
     Reads only the first three bands (R, G, B).  Uses ``Resampling.bilinear``
     as fallback, which is appropriate for continuous imagery.
-
-    When ``bbox`` is provided the dataset is read as a geographic window at
-    native resolution.  Otherwise a full-extent overview is selected via
-    ``_optimal_factor``.
+    A full-extent overview is selected via ``_optimal_factor``.
 
     Args:
         cog_url: HTTPS URL or local path to a 3-band uint8 EPSG:4326 COG.
         globe_size_px: Output panel width in pixels; used to auto-select the
             optimal COG overview when ``downsample`` is ``None``.
         visible_width_deg: Geographic width visible on the panel in degrees
-            (180 for a full globe; smaller for a zoomed view).
+            (180 for a full globe).
         downsample: Integer decimation factor.  ``None`` = auto-select.
-            Ignored when ``bbox`` is set.
-        quality_scale: Passed to ``_optimal_factor``.  Ignored when ``bbox``
-            is set.
-        bbox: ``(lon_min, lat_min, lon_max, lat_max)`` in degrees for a
-            windowed native-resolution read.
+        quality_scale: Passed to ``_optimal_factor``.
 
     Returns:
         Tuple of (RGB array, extent) where extent is
@@ -671,25 +554,14 @@ def load_background(
     with rasterio.open(cog_url) as src:
         print(f"  native size : {src.width} x {src.height}")
         print(f"  overviews   : {src.overviews(1)}")
-        if bbox is not None:
-            lon_span = max(bbox[2] - bbox[0], 0.001)
-            lat_span = max(bbox[3] - bbox[1], 0.001)
-            tgt_w = max(256, round(globe_size_px * quality_scale))
-            tgt_h = max(256, round(tgt_w * lat_span / lon_span))
-            out_shape = (3, tgt_h, tgt_w)
-            print(f"  target shape: {tgt_w} x {tgt_h} (quality_scale={quality_scale})")
-            data, extent = _read_window_native(
-                src, bbox, bands=[1, 2, 3], out_shape=out_shape, resampling=Resampling.bilinear
+        b = src.bounds
+        extent = [b.left, b.right, b.bottom, b.top]
+        print(f"  extent      : {extent}")
+        if downsample is None:
+            downsample = _optimal_factor(
+                src, globe_size_px, visible_width_deg, quality_scale
             )
-        else:
-            b = src.bounds
-            extent = [b.left, b.right, b.bottom, b.top]
-            print(f"  extent      : {extent}")
-            if downsample is None:
-                downsample = _optimal_factor(
-                    src, globe_size_px, visible_width_deg, quality_scale
-                )
-            data = _read_overview(src, downsample, Resampling.bilinear, bands=[1, 2, 3])
+        data = _read_overview(src, downsample, Resampling.bilinear, bands=[1, 2, 3])
 
     rgb = np.moveaxis(data, 0, -1)  # (3, H, W) -> (H, W, 3)
     print(f"  done — RGB shape {rgb.shape}")
@@ -722,10 +594,6 @@ def build_figure(
 
         Figure width  = N x (globe_size_px + globe_gap_px) px
         Figure height =      (globe_size_px / aspect_ratio) + globe_gap_px  px
-
-    When a :class:`GlobeView` carries a ``zoom`` value, the panel renders a
-    rectangular "screen view" — the region visible in a MapLibre globe at
-    that zoom level.  Without a zoom the full circular globe is shown.
 
     Args:
         rgba: RGBA (H, W, 4) uint8 LCM-10 array.
@@ -843,34 +711,8 @@ def build_figure(
             )
 
         # --- View extent ---------------------------------------------------
-        if view.zoom is not None:
-            # Rectangular screen crop: compute the half-extents in projection
-            # metres using standard WebMercator tile math, cos(lat)-adjusted.
-            # half_h < half_w when aspect_ratio > 1 (wider than tall).
-            mpp    = zoom_to_mpp(view.zoom, view.lat)
-            half_w = (globe_size_px / 2) * mpp
-            half_h = (panel_h_px    / 2) * mpp
-            # Cartopy forces aspect='equal' on Orthographic GeoAxes, which
-            # makes the globe a circle that fills the axes height, leaving
-            # transparent sides.  Override with 'auto' so the xlim/ylim
-            # below map the projection metres directly to the panel pixels.
-            ax.set_aspect('auto')
-            # Set viewport in projection metres directly — set_extent() has
-            # known issues with Orthographic when crs=proj is passed.
-            ax.set_xlim(-half_w, half_w)
-            ax.set_ylim(-half_h, half_h)
-            # Clip to a rectangle in projection-metre coordinates.
-            # transform=ax.transAxes is unreliable after set_aspect('auto');
-            # using data-space coords that match xlim/ylim is more robust.
-            rect = mpath.Path([
-                (-half_w, -half_h), ( half_w, -half_h),
-                ( half_w,  half_h), (-half_w,  half_h),
-                (-half_w, -half_h),
-            ])
-            ax.set_boundary(rect, transform=proj)
-        else:
-            # Full circular globe (Cartopy default circular boundary).
-            ax.set_global()
+        # Full circular globe (Cartopy default circular boundary).
+        ax.set_global()
 
     fig.subplots_adjust(
         left=left_frac, right=right_frac,
@@ -901,10 +743,7 @@ def load_config(path: Path) -> dict:
 def _parse_globe_views(entry: dict) -> list[GlobeView]:
     """Build a list of :class:`GlobeView` objects from a ``[[render]]`` entry.
 
-    Accepts either:
-
-    - ``maplibre_url``: one view, zoom/lat/lon parsed from the URL hash.
-    - ``globe_centers``: list of ``[lon, lat]`` pairs, no zoom.
+    Reads ``globe_centers``: a list of ``[lon, lat]`` pairs.
 
     Args:
         entry: A single ``[[render]]`` dictionary from the TOML config.
@@ -913,10 +752,8 @@ def _parse_globe_views(entry: dict) -> list[GlobeView]:
         List of :class:`GlobeView` objects.
 
     Raises:
-        KeyError: If neither ``maplibre_url`` nor ``globe_centers`` is present.
+        KeyError: If ``globe_centers`` is not present.
     """
-    if "maplibre_url" in entry:
-        return [globe_view_from_maplibre_url(entry["maplibre_url"])]
     return [GlobeView(lon=float(c[0]), lat=float(c[1])) for c in entry["globe_centers"]]
 
 
@@ -947,14 +784,14 @@ def run_all_renders(
     g_bg_ds = g.get("bg_downsample_factor", BG_DOWNSAMPLE_FACTOR)
     g_qs    = g.get("quality_scale",        QUALITY_SCALE)
 
-    # Cache loaded arrays by (fn, url, globe_size_px, visible_width_deg, ds, qs, bbox)
+    # Cache loaded arrays by (fn, url, globe_size_px, visible_width_deg, ds, qs)
     # so renders with identical parameters skip the COG download.
     _cache: dict[tuple, tuple] = {}
 
-    def _load(fn, url, globe_size_px, vwd, ds, qs, bbox):
-        key = (fn, url, globe_size_px, vwd, ds, qs, bbox)
+    def _load(fn, url, globe_size_px, vwd, ds, qs):
+        key = (fn, url, globe_size_px, vwd, ds, qs)
         if key not in _cache:
-            _cache[key] = fn(url, globe_size_px, vwd, ds, qs, bbox)
+            _cache[key] = fn(url, globe_size_px, vwd, ds, qs)
         return _cache[key]
 
     for entry in config.get("render", []):
@@ -980,20 +817,17 @@ def run_all_renders(
         bg_ds = entry.get("bg_downsample_factor", g_bg_ds)
         qs    = entry.get("quality_scale",        g_qs)
 
-        # Compute the most-demanding visible geographic width across all views.
+        # Compute the visible geographic width across all views.
         vwd  = _visible_width_deg_for_render(globe_views, globe_size)
-        # For zoomed renders use a windowed native-resolution read instead of
-        # a full-extent overview; None means fall back to the overview path.
-        bbox = _render_bbox(globe_views, globe_size, asp)
 
         n = len(globe_views)
         print(f"\nRendering '{name}' ({n} globe(s)) -> {output} ...")
-        rgba, lcm_extent = _load(load_data, cog_url, globe_size, vwd, ds, qs, bbox)
+        rgba, lcm_extent = _load(load_data, cog_url, globe_size, vwd, ds, qs)
 
         bg_rgb: np.ndarray | None = None
         bg_extent: list[float] | None = None
         if bg_cog:
-            bg_rgb, bg_extent = _load(load_background, bg_cog, globe_size, vwd, bg_ds, qs, bbox)
+            bg_rgb, bg_extent = _load(load_background, bg_cog, globe_size, vwd, bg_ds, qs)
 
         transparent = background == "transparent"
         if not only_icon:
@@ -1095,15 +929,14 @@ def main() -> None:
 
     # Fallback: use hardcoded module-level constants.
     vwd  = _visible_width_deg_for_render(GLOBE_VIEWS, GLOBE_SIZE_PX)
-    bbox = _render_bbox(GLOBE_VIEWS, GLOBE_SIZE_PX)
     rgba, lcm_extent = load_data(
-        COG_URL, GLOBE_SIZE_PX, vwd, DOWNSAMPLE_FACTOR, QUALITY_SCALE, bbox
+        COG_URL, GLOBE_SIZE_PX, vwd, DOWNSAMPLE_FACTOR, QUALITY_SCALE
     )
     bg_rgb: np.ndarray | None = None
     bg_extent: list[float] | None = None
     if BG_COG_URL:
         bg_rgb, bg_extent = load_background(
-            BG_COG_URL, GLOBE_SIZE_PX, vwd, BG_DOWNSAMPLE_FACTOR, QUALITY_SCALE, bbox
+            BG_COG_URL, GLOBE_SIZE_PX, vwd, BG_DOWNSAMPLE_FACTOR, QUALITY_SCALE
         )
 
     n = len(GLOBE_VIEWS)
