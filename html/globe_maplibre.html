@@ -401,8 +401,11 @@
           id: 'lcm10-cog',
           type: 'raster',
           source: 'lcm10-cog',
-          maxzoom: LCM10_SWITCH_ZOOM,
-          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+          // No hard maxzoom — opacity interpolation handles the fade-out.
+          paint: {
+            'raster-opacity': ['interpolate', ['linear'], ['zoom'], 5.5, 1, 6.5, 0],
+            'raster-resampling': 'nearest',
+          },
         });
 
         map.addSource('lcm10-wmts', {
@@ -417,8 +420,13 @@
           id: 'lcm10-wmts',
           type: 'raster',
           source: 'lcm10-wmts',
-          minzoom: LCM10_SWITCH_ZOOM,
-          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+          // Layer activates half a zoom early so MapLibre starts loading z=6 tiles
+          // before they're needed. Source minzoom stays at 6 (no tiles exist below).
+          minzoom: LCM10_SWITCH_ZOOM - 0.5,
+          paint: {
+            'raster-opacity': ['interpolate', ['linear'], ['zoom'], 5.5, 0, 6.5, 1],
+            'raster-resampling': 'nearest',
+          },
         });
 
         // ── Layer 3: Country borders (Natural Earth 50m) ──
@@ -442,6 +450,54 @@
           },
         });
       });
+
+      // ── WMTS tile prefetch when approaching the zoom-switch boundary ──
+      // When the user starts zooming in from z 5–6, explicitly fetch the z=6 WMTS
+      // tiles for the current viewport. Results go directly into the browser HTTP
+      // cache, so they render instantly when the WMTS layer becomes opaque.
+      // Capped at 30 tiles to avoid hammering the server on wide viewports.
+      const prefetchedTiles = new Set();
+
+      map.on('zoomstart', () => {
+        const zoom = map.getZoom();
+        if (zoom < 5.0 || zoom >= LCM10_SWITCH_ZOOM) return;
+
+        const bounds = map.getBounds();
+        const Z = LCM10_SWITCH_ZOOM;  // always prefetch at z=6
+        const n = 1 << Z;             // 64 tiles span 360°
+
+        const toTileX = (lng) => Math.floor((lng + 180) / 360 * n);
+        const toTileY = (lat) => {
+          const r = lat * Math.PI / 180;
+          return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n);
+        };
+
+        const xMin = toTileX(bounds.getWest());
+        const xMax = toTileX(bounds.getEast());
+        // Note: tile Y increases downward, so north → smaller Y.
+        const yMin = toTileY(Math.min(bounds.getNorth(), 85.051129));
+        const yMax = toTileY(Math.max(bounds.getSouth(), -85.051129));
+
+        if ((xMax - xMin + 1) * (yMax - yMin + 1) > 30) return;
+
+        for (let x = xMin; x <= xMax; x++) {
+          const tx = ((x % n) + n) % n;  // wrap around antimeridian
+          for (let y = yMin; y <= yMax; y++) {
+            if (y < 0 || y >= n) continue;
+            const key = `${tx}/${y}`;
+            if (prefetchedTiles.has(key)) continue;
+            prefetchedTiles.add(key);
+            const url = LCM10_WMTS_TILES
+              .replace('{z}', Z)
+              .replace('{x}', tx)
+              .replace('{y}', y);
+            fetch(url, { priority: 'low' }).catch(() => { });
+          }
+        }
+      });
+
+      // Clear on moveend so panning to a new area re-triggers prefetch.
+      map.on('moveend', () => prefetchedTiles.clear());
 
       // ── Borders toggle button wiring ──
       const bordersBtn = document.getElementById('borders-toggle');
