@@ -401,11 +401,8 @@
           id: 'lcm10-cog',
           type: 'raster',
           source: 'lcm10-cog',
-          // No hard maxzoom — opacity interpolation handles the fade-out.
-          paint: {
-            'raster-opacity': ['interpolate', ['linear'], ['zoom'], 5.5, 1, 6.5, 0],
-            'raster-resampling': 'nearest',
-          },
+          maxzoom: LCM10_SWITCH_ZOOM,
+          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
         });
 
         map.addSource('lcm10-wmts', {
@@ -420,13 +417,8 @@
           id: 'lcm10-wmts',
           type: 'raster',
           source: 'lcm10-wmts',
-          // Layer activates half a zoom early so MapLibre starts loading z=6 tiles
-          // before they're needed. Source minzoom stays at 6 (no tiles exist below).
-          minzoom: LCM10_SWITCH_ZOOM - 0.5,
-          paint: {
-            'raster-opacity': ['interpolate', ['linear'], ['zoom'], 5.5, 0, 6.5, 1],
-            'raster-resampling': 'nearest',
-          },
+          minzoom: LCM10_SWITCH_ZOOM,
+          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
         });
 
         // ── Layer 3: Country borders (Natural Earth 50m) ──
