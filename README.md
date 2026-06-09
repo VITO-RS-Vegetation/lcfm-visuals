@@ -99,3 +99,49 @@ sphere using PyVista.  Outputs `globe_rotation_fps<N>.gif` and `.mp4`.
 ```bash
 uv run python scripts/rotating_globe.py
 ```
+
+---
+
+### `scripts/flythrough_recorder.py` — MapLibre flythrough video (MP4)
+
+Drives a headless MapLibre GL JS globe through a series of zoom/pan waypoints
+and assembles the captured frames into an MP4 suitable for social media.
+Uses Playwright (headless Chromium) for frame capture, with cosine ease-in-out
+interpolation between waypoints and a 2× device pixel ratio so tiles are
+fetched at HiDPI quality.
+
+Flight paths are defined in [`configs/flightpath.toml`](configs/flightpath.toml).
+Each `[[flightpath]]` entry specifies a name, output path, and a list of
+`[[flightpath.waypoints]]` with `zoom`, `lat`, and `lon` values taken directly
+from the `#zoom/lat/lon` URL fragment of the interactive viewer.
+
+Key settings (in `[settings]` or overridden per entry):
+
+| Parameter | Default | Description |
+|---|---|---|
+| `fps` | `30` | Output frame rate |
+| `width` / `height` | `1080` | Output resolution in pixels |
+| `duration_s` | `15.0` | Total flight duration (hold frames excluded) |
+| `pre_frames` | `0` | Static hold frames on first waypoint before flight |
+| `post_frames` | `0` | Static hold frames on last waypoint after flight |
+
+**One-time setup** (after `uv sync`):
+
+```bash
+uv run playwright install chromium
+```
+
+```bash
+# Quick test at low fps
+uv run python scripts/flythrough_recorder.py \
+    --config configs/flightpath.toml --name africa_zoom \
+    --fps 10 --output images/test.mp4
+
+# Full quality render
+uv run python scripts/flythrough_recorder.py \
+    --config configs/flightpath.toml --name africa_zoom
+
+# Show browser window while recording (debug)
+uv run python scripts/flythrough_recorder.py \
+    --config configs/flightpath.toml --name africa_zoom --no-headless
+```
