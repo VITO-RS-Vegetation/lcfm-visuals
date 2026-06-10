@@ -1,0 +1,87 @@
+# Flight-path rendering configuration for flythrough_recorder.py.
+#
+# Run:
+#   uv run python scripts/flythrough_recorder.py --config configs/flightpath.toml --name africa_zoom
+#
+# Each [[flightpath]] entry defines one video.
+# [settings] apply to all entries and can be overridden per [[flightpath]].
+
+[settings]
+fps        = 30
+width      = 1080
+height     = 1080
+duration_s = 15.0   # total video length; divided equally across segments
+pre_frames = 15     # static hold on first waypoint before flight starts
+post_frames = 30    # static hold on last waypoint after flight ends
+
+# ---------------------------------------------------------------------------
+# africa_zoom — continuous zoom-in over the Sahel / Libya region
+# ---------------------------------------------------------------------------
+[[flightpath]]
+name   = "africa_zoom"
+output = "images/flythrough_africa.mp4"
+
+  [[flightpath.waypoints]]
+  zoom = 2.73
+  lat  = 20.63
+  lon  = 13.5
+
+  [[flightpath.waypoints]]
+  zoom = 3.51
+  lat  = 23.03
+  lon  = 18.41
+
+  [[flightpath.waypoints]]
+  zoom = 4.28
+  lat  = 26.09
+  lon  = 24.19
+
+  [[flightpath.waypoints]]
+  zoom = 5.06
+  lat  = 27.88
+  lon  = 27.26
+
+  [[flightpath.waypoints]]
+  zoom = 5.85
+  lat  = 28.843
+  lon  = 29.122
+
+  [[flightpath.waypoints]]
+  zoom = 6.65
+  lat  = 29.424
+  lon  = 30.006
+
+  [[flightpath.waypoints]]
+  zoom = 7.44
+  lat  = 29.999
+  lon  = 30.42
+
+  [[flightpath.waypoints]]
+  zoom = 8.24
+  lat  = 30.311
+  lon  = 30.752
+
+  [[flightpath.waypoints]]
+  zoom = 9.05
+  lat  = 30.4629
+  lon  = 30.9424
+
+  [[flightpath.waypoints]]
+  zoom = 9.85
+  lat  = 30.5322
+  lon  = 31.0125
+
+  [[flightpath.waypoints]]
+  zoom = 10.65
+  lat  = 30.5621
+  lon  = 31.0536
+
+  [[flightpath.waypoints]]
+  zoom = 11.86
+  lat  = 30.50278
+  lon  = 30.9852
+
+  [[flightpath.waypoints]]
+  zoom = 13.06
+  lat  = 30.50088
+  lon  = 30.96394

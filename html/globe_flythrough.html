@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCM-10 Flythrough — MapLibre GL JS</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+    }
+
+    #map {
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+
+    /* Hide all MapLibre UI chrome */
+    .maplibregl-ctrl-top-right,
+    .maplibregl-ctrl-bottom-right,
+    .maplibregl-ctrl-bottom-left,
+    .maplibregl-ctrl-top-left {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <script>
+    (function () {
+      var js = document.createElement('script');
+      js.src = 'https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.js';
+      document.head.appendChild(js);
+      var t = setInterval(function () {
+        if (window.maplibregl) { clearInterval(t); initMap(); }
+      }, 50);
+    })();
+
+    function initMap() {
+      const COG_URL = encodeURIComponent(
+        'https://vito-lcf-shapefiles-waw4-1.s3.waw4-1.cloudferro.com/LCM-10_v100_2020_MAP_lat-lon.tif'
+      );
+
+      const COLORMAP = encodeURIComponent(JSON.stringify({
+        10: [0, 100, 0, 255],
+        20: [255, 187, 34, 255],
+        30: [255, 255, 76, 255],
+        40: [240, 150, 255, 255],
+        50: [0, 150, 160, 255],
+        60: [0, 207, 117, 255],
+        70: [250, 230, 160, 255],
+        80: [180, 180, 180, 255],
+        90: [250, 0, 0, 255],
+        100: [0, 100, 200, 255],
+        110: [240, 240, 240, 255],
+        254: [10, 10, 10, 255],
+        255: [0, 0, 0, 0],
+      }));
+
+      const LCM10_SWITCH_ZOOM = 6;
+
+      const LCM10_COG_TILES =
+        'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
+        + `?url=${COG_URL}`
+        + '&bidx=1'
+        + `&colormap=${COLORMAP}`
+        + '&tilesize=512'
+        + '&resampling=mode';
+
+      const LCM10_WMTS_TILES =
+        'https://wmts.terrascope.be/wmts'
+        + '?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+        + '&LAYER=lcfm-lcm-10_map&STYLE=default&FORMAT=image/png'
+        + '&TILEMATRIXSET=EPSG:3857'
+        + '&TILEMATRIX={z}&TILECOL={x}&TILEROW={y}'
+        + '&TIME=2020-01-01';
+
+      const BLUE_MARBLE_TILES =
+        'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer'
+        + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0'
+        + '&LAYERS=0&STYLES=&FORMAT=image/png&TRANSPARENT=false'
+        + '&CRS=EPSG:3857&WIDTH=256&HEIGHT=256'
+        + '&BBOX={bbox-epsg-3857}';
+
+      window.map = new maplibregl.Map({
+        container: 'map',
+        attributionControl: false,
+        hash: false,
+        style: {
+          version: 8,
+          projection: { type: 'globe' },
+          sources: {},
+          layers: [],
+          sky: { 'atmosphere-blend': 0 },
+        },
+        center: [14.89, 28.18],
+        zoom: 3.03,
+        preserveDrawingBuffer: true,
+        // Limit concurrent tile requests to avoid hitting public titiler rate limits.
+        // Each new position fires requests for ~4-9 tiles; keep the burst small so
+        // tiles actually return data instead of being rate-limited (and rendering blank).
+        maxParallelImageRequests: 4,
+      });
+
+      window.map.on('load', () => {
+        window.map.addSource('blue-marble', {
+          type: 'raster',
+          tiles: [BLUE_MARBLE_TILES],
+          tileSize: 256,
+          attribution: '© USGS',
+        });
+        window.map.addLayer({
+          id: 'blue-marble',
+          type: 'raster',
+          source: 'blue-marble',
+        });
+
+        window.map.addSource('lcm10-cog', {
+          type: 'raster',
+          tiles: [LCM10_COG_TILES],
+          tileSize: 512,
+          maxzoom: 13,
+          attribution: '© VITO 2026. CC-BY 4.0',
+        });
+        window.map.addLayer({
+          id: 'lcm10-cog',
+          type: 'raster',
+          source: 'lcm10-cog',
+          maxzoom: LCM10_SWITCH_ZOOM,
+          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+        });
+
+        window.map.addSource('lcm10-wmts', {
+          type: 'raster',
+          tiles: [LCM10_WMTS_TILES],
+          tileSize: 256,
+          minzoom: LCM10_SWITCH_ZOOM,
+          maxzoom: 14,
+          attribution: '© VITO 2026. CC-BY 4.0',
+        });
+        window.map.addLayer({
+          id: 'lcm10-wmts',
+          type: 'raster',
+          source: 'lcm10-wmts',
+          minzoom: LCM10_SWITCH_ZOOM,
+          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+        });
+
+        // Signal that the map is fully ready for Playwright
+        window._mapReady = true;
+      });
+    }
+  </script>
+</body>
+
+</html>
