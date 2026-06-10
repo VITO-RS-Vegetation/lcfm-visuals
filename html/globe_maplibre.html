@@ -420,7 +420,11 @@
           type: 'raster',
           source: 'lcm10-cog-hires',
           maxzoom: LCM10_COG_SPLIT,
-          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+          // linear: at z=0–3 tiles are upscaled heavily; linear smooths hard block
+          // edges between class colors at display time. Server-side mode resampling
+          // already produced correct majority-class values, so linear only affects
+          // the visual interpolation of the already-colorized PNG.
+          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'linear' },
         });
 
         // Standard COG source (tilesize=512) for z=LCM10_COG_SPLIT–LCM10_SWITCH_ZOOM.
