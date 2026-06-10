@@ -314,7 +314,22 @@
       // Switch at z=6: WMTS coverage starts at z6, so switch at first guaranteed WMTS zoom.
       const LCM10_SWITCH_ZOOM = 6;
 
+      // At z=0–4 use tilesize=1024: titiler selects one overview level finer than
+      // tilesize=512, giving 2× more pixel data per tile at every zoom (ov32→ov16
+      // at z=1, ov4→ov2 at z=4). At z=5 tilesize=1024 would push past all
+      // overviews to the full-resolution COG — too slow — so the standard 512-tile
+      // source takes over from LCM10_COG_SPLIT upward.
+      const LCM10_COG_SPLIT = 4;
+
       // bidx=1 only: colormap maps band 1 values to RGBA (including 255→transparent).
+      const LCM10_COG_TILES_HIRES =
+        'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
+        + `?url=${COG_URL}`
+        + '&bidx=1'
+        + `&colormap=${COLORMAP}`
+        + '&tilesize=1024'
+        + '&resampling=mode';
+
       const LCM10_COG_TILES =
         'https://titiler.xyz/cog/tiles/WebMercatorQuad/{z}/{x}/{y}'
         + `?url=${COG_URL}`
@@ -390,10 +405,30 @@
         });
 
         // ── Layer 2: LCM-10 land cover (foreground) ──
+        // High-res COG source (tilesize=1024) for z=0–LCM10_COG_SPLIT.
+        // Each tile carries 4× the pixel data of the standard 512-tile source,
+        // exploiting the next-finer COG overview at every zoom level.
+        map.addSource('lcm10-cog-hires', {
+          type: 'raster',
+          tiles: [LCM10_COG_TILES_HIRES],
+          tileSize: 1024,
+          maxzoom: LCM10_COG_SPLIT,
+          attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
+        });
+        map.addLayer({
+          id: 'lcm10-cog-hires',
+          type: 'raster',
+          source: 'lcm10-cog-hires',
+          maxzoom: LCM10_COG_SPLIT,
+          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+        });
+
+        // Standard COG source (tilesize=512) for z=LCM10_COG_SPLIT–LCM10_SWITCH_ZOOM.
         map.addSource('lcm10-cog', {
           type: 'raster',
           tiles: [LCM10_COG_TILES],
           tileSize: 512,
+          minzoom: LCM10_COG_SPLIT,
           maxzoom: 13,
           attribution: '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. <a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
         });
@@ -401,6 +436,7 @@
           id: 'lcm10-cog',
           type: 'raster',
           source: 'lcm10-cog',
+          minzoom: LCM10_COG_SPLIT,
           maxzoom: LCM10_SWITCH_ZOOM,
           paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
         });
