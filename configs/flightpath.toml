@@ -85,3 +85,90 @@ output = "images/flythrough_africa.mp4"
   zoom = 13.06
   lat  = 30.50088
   lon  = 30.96394
+
+# ---------------------------------------------------------------------------
+# valencia — zoom-in over Valencia, Spain
+# ---------------------------------------------------------------------------
+[[flightpath]]
+name   = "valencia"
+output = "images/flythrough_valencia.mp4"
+
+  [[flightpath.waypoints]]
+  zoom = 2.73
+  lat  = 26.59
+  lon  = 14.63
+
+  [[flightpath.waypoints]]
+  zoom = 3.48
+  lat  = 30.32
+  lon  = 10.08
+
+  [[flightpath.waypoints]]
+  zoom = 4.23
+  lat  = 33.95
+  lon  = 5.59
+
+  [[flightpath.waypoints]]
+  zoom = 4.99
+  lat  = 36.31
+  lon  = 2.97
+
+  [[flightpath.waypoints]]
+  zoom = 5.77
+  lat  = 37.603
+  lon  = 1.563
+
+  [[flightpath.waypoints]]
+  zoom = 6.56
+  lat  = 38.426
+  lon  = 0.719
+
+  [[flightpath.waypoints]]
+  zoom = 7.36
+  lat  = 38.881
+  lon  = 0.256
+
+  [[flightpath.waypoints]]
+  zoom = 8.16
+  lat  = 39.139
+  lon  = -0.019
+
+  [[flightpath.waypoints]]
+  zoom = 8.96
+  lat  = 39.2826
+  lon  = -0.1702
+
+  [[flightpath.waypoints]]
+  zoom = 9.76
+  lat  = 39.3703
+  lon  = -0.2566
+
+  [[flightpath.waypoints]]
+  zoom = 10.5
+  lat  = 39.4815
+  lon  = -0.1091
+
+  [[flightpath.waypoints]]
+  zoom = 11.3
+  lat  = 39.4933
+  lon  = -0.2126
+
+  [[flightpath.waypoints]]
+  zoom = 12.51
+  lat  = 39.47607
+  lon  = -0.28984
+
+  [[flightpath.waypoints]]
+  zoom = 13.72
+  lat  = 39.45846
+  lon  = -0.313
+
+  [[flightpath.waypoints]]
+  zoom = 14.92
+  lat  = 39.45792
+  lon  = -0.32204
+
+  [[flightpath.waypoints]]
+  zoom = 16.13
+  lat  = 39.458788
+  lon  = -0.325261
