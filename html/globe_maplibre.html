@@ -402,7 +402,7 @@
           type: 'raster',
           source: 'lcm10-cog',
           maxzoom: LCM10_SWITCH_ZOOM,
-          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+          paint: { 'raster-opacity': 1.0, 'raster-resampling': 'linear' },
         });
 
         map.addSource('lcm10-wmts', {
