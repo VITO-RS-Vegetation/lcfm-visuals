@@ -27,7 +27,7 @@ jobs:
       - name: Prepare site
         run: |
           mkdir _site
-          cp html/globe_maplibre.html _site/index.html
+          cp html/globe_mapproxy.html _site/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
