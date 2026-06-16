@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LCM-10 Globe — MapProxy</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        #map {
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        /* ── Legend toggle button ───────────────────────────────────────────── */
+        #legend-toggle {
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            width: 32px;
+            height: 32px;
+            background: rgba(15, 15, 15, 0.85);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            backdrop-filter: blur(4px);
+            color: #ccc;
+            transition: color 0.15s;
+        }
+
+        #legend-toggle:hover {
+            color: #fff;
+        }
+
+        #legend-toggle svg {
+            display: block;
+        }
+
+        /* ── Borders toggle button ──────────────────────────────────────────── */
+        #borders-toggle {
+            position: absolute;
+            top: 180px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            background: rgba(15, 15, 15, 0.85);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            backdrop-filter: blur(4px);
+            color: #ccc;
+            transition: color 0.15s, background 0.15s;
+        }
+
+        #borders-toggle:hover {
+            color: #fff;
+        }
+
+        #borders-toggle.active {
+            color: #fff;
+            background: rgba(40, 90, 140, 0.85);
+        }
+
+        #borders-toggle svg {
+            display: block;
+        }
+
+        /* ── Export button ──────────────────────────────────────────────────── */
+        #export-btn {
+            position: absolute;
+            top: 222px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            background: rgba(15, 15, 15, 0.85);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            backdrop-filter: blur(4px);
+            color: #ccc;
+            transition: color 0.15s;
+        }
+
+        #export-btn:hover {
+            color: #fff;
+        }
+
+        #export-btn svg {
+            display: block;
+        }
+
+        /* ── Legend panel ───────────────────────────────────────────────────── */
+        #legend {
+            position: absolute;
+            bottom: 30px;
+            left: 50px;
+            background: rgba(15, 15, 15, 0.85);
+            color: #eee;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.6;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+            z-index: 1;
+            backdrop-filter: blur(4px);
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+
+        #legend.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #legend h3 {
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: 0.02em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* ── Attribution dark theme overrides ──────────────────────────────── */
+        .maplibregl-ctrl-attrib {
+            background: rgba(0, 0, 0, 0.6) !important;
+            color: #ccc !important;
+        }
+
+        .maplibregl-ctrl-attrib a {
+            color: #9bd !important;
+        }
+
+        .maplibregl-ctrl-attrib-button {
+            filter: invert(0.8);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <!-- Eye toggle: controls legend visibility ─────────────────────────────── -->
+    <button id="legend-toggle" title="Toggle legend" onclick="
+    var l = document.getElementById('legend');
+    var open = !l.classList.contains('hidden');
+    l.classList.toggle('hidden', open);
+    document.getElementById('eye-open').style.display  = open ? 'none'  : 'block';
+    document.getElementById('eye-shut').style.display  = open ? 'block' : 'none';
+  ">
+        <svg id="eye-open" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+        </svg>
+        <svg id="eye-shut" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+            <line x1="1" y1="1" x2="23" y2="23" />
+        </svg>
+    </button>
+
+    <!-- Export: save current globe view as PNG ─────────────────────────────── -->
+    <button id="export-btn" title="Export globe as PNG">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+            <circle cx="12" cy="13" r="4" />
+        </svg>
+    </button>
+
+    <!-- Borders toggle: show/hide country border lines ─────────────────────── -->
+    <button id="borders-toggle" class="active" title="Toggle country borders">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+            <line x1="8" y1="2" x2="8" y2="18" />
+            <line x1="16" y1="6" x2="16" y2="22" />
+        </svg>
+    </button>
+
+    <div id="legend">
+        <h3>LCM-10 Land Cover (2020)</h3>
+        <div class="legend-item">
+            <div class="swatch" style="background:#006400"></div><span>Tree cover</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#FFBB22"></div><span>Shrubland</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#FFFF4C"></div><span>Grassland</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#F096FF"></div><span>Cropland</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#0096A0"></div><span>Herbaceous wetland</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#00CF75"></div><span>Mangroves</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#FAE6A0"></div><span>Moss and lichen</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#B4B4B4"></div><span>Bare / sparse vegetation</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#FA0000"></div><span>Built-up</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#0064C8"></div><span>Permanent water bodies</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#F0F0F0"></div><span>Snow and ice</span>
+        </div>
+        <div class="legend-item">
+            <div class="swatch" style="background:#0A0A0A;border-color:rgba(255,255,255,0.4)"></div>
+            <span>Unclassifiable</span>
+        </div>
+        <hr style="border-color:rgba(255,255,255,0.12);margin:8px 0 6px" />
+        <div style="font-size:10px;color:#888;line-height:1.4">
+            © VITO 2026. European Union's Copernicus Land Monitoring Service information. <a
+                href="https://creativecommons.org/licenses/by/4.0/" style="color:#9bd" target="_blank">CC-BY 4.0</a>
+        </div>
+    </div>
+
+    <script>
+        // ── Terrascope MapProxy — LCM_2020 WMTS tile URL ───────────────────────
+        //
+        // LCM_2020 is publicly accessible on MapProxy — no authentication needed.
+        // Layer: LCM_2020  (same product as lcfm-lcm-10_map on wmts.terrascope.be)
+        // TileMatrixSet: webmercator  (confirmed from WMTSCapabilities.xml — NOT EPSG:3857)
+        // Spatial extent: [-180, -85.05, 180, 85.05]
+        // Capabilities: https://mapproxy.terrascope.be/mapproxy/wmts/1.0.0/WMTSCapabilities.xml
+        //
+        // KVP via /mapproxy/service does not support WMTS (returns InvalidParameterValue).
+        // Use the REST template published in capabilities instead.
+        const MAPPROXY_TILES =
+            'https://mapproxy.terrascope.be/mapproxy/wmts/LCM_2020/webmercator/{z}/{x}/{y}.png';
+
+        // ── Blue Marble — USGS WMS 1.3.0, CRS=EPSG:3857 ───────────────────────
+        const BLUE_MARBLE_TILES =
+            'https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer'
+            + '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0'
+            + '&LAYERS=0&STYLES=&FORMAT=image/png&TRANSPARENT=false'
+            + '&CRS=EPSG:3857&WIDTH=256&HEIGHT=256'
+            + '&BBOX={bbox-epsg-3857}';
+
+        // ── Load MapLibre, then initialize map ─────────────────────────────────
+        // Poll until window.maplibregl is defined (avoids htmlpreview.github.io
+        // issue where script.onload fires synchronously before the script runs).
+        (function () {
+            var js = document.createElement('script');
+            js.src = 'https://unpkg.com/maplibre-gl@5.22.0/dist/maplibre-gl.js';
+            document.head.appendChild(js);
+            var t = setInterval(function () {
+                if (window.maplibregl) { clearInterval(t); initMap(); }
+            }, 50);
+        })();
+
+        function initMap() {
+            const map = new maplibregl.Map({
+                container: 'map',
+                attributionControl: false,
+                hash: true,
+                style: {
+                    version: 8,
+                    projection: { type: 'globe' },
+                    sources: {},
+                    layers: [],
+                    sky: {
+                        // Disable atmospheric halo — clean disc edge for data visualization.
+                        'atmosphere-blend': 0,
+                    },
+                },
+                center: [10, 30],
+                zoom: 1.5,
+                preserveDrawingBuffer: true,
+            });
+
+            map.addControl(new maplibregl.NavigationControl(), 'top-right');
+            map.addControl(new maplibregl.GlobeControl(), 'top-right');
+            map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+
+            map.on('load', () => {
+
+                // ── Layer 1: Blue Marble (background) ──────────────────────────────
+                map.addSource('blue-marble', {
+                    type: 'raster',
+                    tiles: [BLUE_MARBLE_TILES],
+                    tileSize: 256,
+                    attribution: '© USGS',
+                });
+                map.addLayer({
+                    id: 'blue-marble',
+                    type: 'raster',
+                    source: 'blue-marble',
+                });
+
+                // ── Layer 2: LCM-10 via MapProxy (single source, all zoom levels) ─
+                // MapProxy provides a pre-rendered tile cache, so no zoom-based
+                // source switching is needed (unlike the dual titiler/WMTS approach
+                // in globe_maplibre.html).
+                //
+                // maxzoom: 14 matches the known WMTS range; confirm from MapProxy
+                // capabilities whether higher zooms are available.
+                map.addSource('lcm10', {
+                    type: 'raster',
+                    tiles: [MAPPROXY_TILES],
+                    tileSize: 256,
+                    maxzoom: 14,
+                    attribution:
+                        '© VITO 2026. European Union\'s Copernicus Land Monitoring Service information. '
+                        + '<a href="https://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
+                });
+                map.addLayer({
+                    id: 'lcm10',
+                    type: 'raster',
+                    source: 'lcm10',
+                    paint: { 'raster-opacity': 1.0, 'raster-resampling': 'nearest' },
+                });
+
+                // ── Layer 3: Country borders (Natural Earth 50m) ───────────────────
+                map.addSource('country-borders', {
+                    type: 'geojson',
+                    data: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson',
+                });
+                map.addLayer({
+                    id: 'country-borders',
+                    type: 'line',
+                    source: 'country-borders',
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round',
+                        'visibility': 'visible',
+                    },
+                    paint: {
+                        'line-color': '#000000',
+                        'line-width': 0.7,
+                        'line-opacity': 0.55,
+                    },
+                });
+            });
+
+            // ── Borders toggle ──────────────────────────────────────────────────
+            const bordersBtn = document.getElementById('borders-toggle');
+            bordersBtn.addEventListener('click', function () {
+                const current = map.getLayoutProperty('country-borders', 'visibility');
+                const next = (current === 'visible') ? 'none' : 'visible';
+                map.setLayoutProperty('country-borders', 'visibility', next);
+                bordersBtn.classList.toggle('active', next === 'visible');
+            });
+
+            // ── Export: save WebGL canvas as PNG with transparent globe disc ────
+            document.getElementById('export-btn').addEventListener('click', function () {
+                map.once('render', function () {
+                    const src = map.getCanvas();
+                    const w = src.width;
+                    const h = src.height;
+                    const zoom = map.getZoom();
+                    const globeRadiusCss = (512 * Math.pow(2, zoom)) / (2 * Math.PI);
+                    const dpr = window.devicePixelRatio || 1;
+                    const globeRadius = globeRadiusCss * dpr;
+
+                    const out = document.createElement('canvas');
+                    out.width = w;
+                    out.height = h;
+                    const ctx = out.getContext('2d');
+                    ctx.drawImage(src, 0, 0);
+
+                    const halfW = w / 2;
+                    const halfH = h / 2;
+                    if (globeRadius < halfW && globeRadius < halfH) {
+                        const mask = document.createElement('canvas');
+                        mask.width = w;
+                        mask.height = h;
+                        const mctx = mask.getContext('2d');
+                        mctx.beginPath();
+                        mctx.arc(halfW, halfH, globeRadius, 0, Math.PI * 2);
+                        mctx.fillStyle = '#000';
+                        mctx.fill();
+                        ctx.globalCompositeOperation = 'destination-in';
+                        ctx.drawImage(mask, 0, 0);
+                        ctx.globalCompositeOperation = 'source-over';
+                    }
+
+                    out.toBlob(function (blob) {
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = 'lcm10-globe-mapproxy.png';
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    }, 'image/png');
+                });
+                map.triggerRepaint();
+            });
+
+        } // end initMap
+    </script>
+</body>
+
+</html>
