@@ -135,40 +135,214 @@ output = "images/flythrough_valencia.mp4"
 
   [[flightpath.waypoints]]
   zoom = 8.96
-  lat  = 39.2826
-  lon  = -0.1702
+  lat  = 39.3428
+  lon  = -0.3322
 
   [[flightpath.waypoints]]
   zoom = 9.76
-  lat  = 39.3703
-  lon  = -0.2566
+  lat  = 39.4273
+  lon  = -0.5054
 
   [[flightpath.waypoints]]
-  zoom = 10.5
-  lat  = 39.4815
-  lon  = -0.1091
+  zoom = 10.57
+  lat  = 39.4616
+  lon  = -0.5473
 
   [[flightpath.waypoints]]
-  zoom = 11.3
-  lat  = 39.4933
-  lon  = -0.2126
+  zoom = 11.37
+  lat  = 39.4603
+  lon  = -0.4612
 
   [[flightpath.waypoints]]
-  zoom = 12.51
-  lat  = 39.47607
-  lon  = -0.28984
+  zoom = 12.18
+  lat  = 39.45753
+  lon  = -0.41319
 
   [[flightpath.waypoints]]
-  zoom = 13.72
-  lat  = 39.45846
-  lon  = -0.313
+  zoom = 13.38
+  lat  = 39.45862
+  lon  = -0.36792
 
   [[flightpath.waypoints]]
-  zoom = 14.92
-  lat  = 39.45792
-  lon  = -0.32204
+  zoom = 14.59
+  lat  = 39.45852
+  lon  = -0.33433
+
+  [[flightpath.waypoints]]
+  zoom = 15.33
+  lat  = 39.457774
+  lon  = -0.321251
 
   [[flightpath.waypoints]]
   zoom = 16.13
   lat  = 39.458788
   lon  = -0.325261
+
+# ---------------------------------------------------------------------------
+# brussels — zoom-in over Brussels, Belgium
+# ---------------------------------------------------------------------------
+[[flightpath]]
+name   = "brussels"
+output = "images/flythrough_brussels.mp4"
+
+  [[flightpath.waypoints]]
+  zoom = 2.73
+  lat  = 26.59
+  lon  = 14.63
+
+  [[flightpath.waypoints]]
+  zoom = 3.42
+  lat  = 34.21
+  lon  = 11.48
+
+  [[flightpath.waypoints]]
+  zoom = 4.08
+  lat  = 41.46
+  lon  = 8.02
+
+  [[flightpath.waypoints]]
+  zoom = 4.79
+  lat  = 45.46
+  lon  = 6.09
+
+  [[flightpath.waypoints]]
+  zoom = 5.54
+  lat  = 47.6
+  lon  = 5.124
+
+  [[flightpath.waypoints]]
+  zoom = 6.3
+  lat  = 49.006
+  lon  = 4.818
+
+  [[flightpath.waypoints]]
+  zoom = 7.09
+  lat  = 49.788
+  lon  = 4.636
+
+  [[flightpath.waypoints]]
+  zoom = 7.87
+  lat  = 50.623
+  lon  = 4.532
+
+  [[flightpath.waypoints]]
+  zoom = 8.67
+  lat  = 50.8035
+  lon  = 4.4411
+
+  [[flightpath.waypoints]]
+  zoom = 9.47
+  lat  = 50.8212
+  lon  = 4.4047
+
+  [[flightpath.waypoints]]
+  zoom = 10.28
+  lat  = 50.8315
+  lon  = 4.384
+
+  [[flightpath.waypoints]]
+  zoom = 11.08
+  lat  = 50.8371
+  lon  = 4.3736
+
+  [[flightpath.waypoints]]
+  zoom = 11.88
+  lat  = 50.83848
+  lon  = 4.38094
+
+  [[flightpath.waypoints]]
+  zoom = 13.09
+  lat  = 50.83955
+  lon  = 4.38801
+
+  [[flightpath.waypoints]]
+  zoom = 14.3
+  lat  = 50.84018
+  lon  = 4.39071
+
+  [[flightpath.waypoints]]
+  zoom = 15.5
+  lat  = 50.840363
+  lon  = 4.391102
+
+# ---------------------------------------------------------------------------
+# new_york — zoom-in over New York City, USA
+# ---------------------------------------------------------------------------
+[[flightpath]]
+name   = "new_york"
+output = "images/flythrough_new_york.mp4"
+
+  [[flightpath.waypoints]]
+  zoom = 2.85
+  lat  = 51.94
+  lon  = -83.19
+
+  [[flightpath.waypoints]]
+  zoom = 3.36
+  lat  = 48.62
+  lon  = -80.95
+
+  [[flightpath.waypoints]]
+  zoom = 4.31
+  lat  = 42.69
+  lon  = -68.83
+
+  [[flightpath.waypoints]]
+  zoom = 5.14
+  lat  = 41.728
+  lon  = -71.11
+
+  [[flightpath.waypoints]]
+  zoom = 5.93
+  lat  = 42.522
+  lon  = -72.453
+
+  [[flightpath.waypoints]]
+  zoom = 6.75
+  lat  = 41.68
+  lon  = -73.171
+
+  [[flightpath.waypoints]]
+  zoom = 7.56
+  lat  = 41.202
+  lon  = -73.57
+
+  [[flightpath.waypoints]]
+  zoom = 8.37
+  lat  = 41.077
+  lon  = -73.735
+
+  [[flightpath.waypoints]]
+  zoom = 9.18
+  lat  = 40.799
+  lon  = -73.8733
+
+  [[flightpath.waypoints]]
+  zoom = 9.99
+  lat  = 40.6327
+  lon  = -73.982
+
+  [[flightpath.waypoints]]
+  zoom = 10.79
+  lat  = 40.686
+  lon  = -74.0345
+
+  [[flightpath.waypoints]]
+  zoom = 11.6
+  lat  = 40.6492
+  lon  = -74.0634
+
+  [[flightpath.waypoints]]
+  zoom = 12.4
+  lat  = 40.63317
+  lon  = -74.08251
+
+  [[flightpath.waypoints]]
+  zoom = 13.21
+  lat  = 40.62294
+  lon  = -74.0939
+
+  [[flightpath.waypoints]]
+  zoom = 14.01
+  lat  = 40.62952
+  lon  = -74.09225
