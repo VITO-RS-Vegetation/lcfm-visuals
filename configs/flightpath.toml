@@ -18,8 +18,8 @@ post_frames = 30    # static hold on last waypoint after flight ends
 # africa_zoom — continuous zoom-in over the Sahel / Libya region
 # ---------------------------------------------------------------------------
 [[flightpath]]
-name   = "africa_zoom"
-output = "images/flythrough_africa.mp4"
+name   = "egypt"
+output = "images/flythrough_egypt.mp4"
 
   [[flightpath.waypoints]]
   zoom = 2.73
@@ -90,8 +90,9 @@ output = "images/flythrough_africa.mp4"
 # valencia — zoom-in over Valencia, Spain
 # ---------------------------------------------------------------------------
 [[flightpath]]
-name   = "valencia"
-output = "images/flythrough_valencia.mp4"
+name      = "valencia"
+output    = "images/flythrough_valencia.mp4"
+pre_frames = 45
 
   [[flightpath.waypoints]]
   zoom = 2.73
@@ -135,48 +136,43 @@ output = "images/flythrough_valencia.mp4"
 
   [[flightpath.waypoints]]
   zoom = 8.96
-  lat  = 39.3428
-  lon  = -0.3322
+  lat  = 39.4325
+  lon  = -0.4461
 
   [[flightpath.waypoints]]
   zoom = 9.76
-  lat  = 39.4273
-  lon  = -0.5054
+  lat  = 39.4488
+  lon  = -0.5507
 
   [[flightpath.waypoints]]
   zoom = 10.57
-  lat  = 39.4616
-  lon  = -0.5473
+  lat  = 39.4505
+  lon  = -0.4753
 
   [[flightpath.waypoints]]
   zoom = 11.37
-  lat  = 39.4603
-  lon  = -0.4612
+  lat  = 39.4566
+  lon  = -0.432
 
   [[flightpath.waypoints]]
-  zoom = 12.18
-  lat  = 39.45753
-  lon  = -0.41319
+  zoom = 12.17
+  lat  = 39.45443
+  lon  = -0.39453
 
   [[flightpath.waypoints]]
-  zoom = 13.38
-  lat  = 39.45862
-  lon  = -0.36792
+  zoom = 12.98
+  lat  = 39.45631
+  lon  = -0.36612
 
   [[flightpath.waypoints]]
-  zoom = 14.59
-  lat  = 39.45852
-  lon  = -0.33433
+  zoom = 13.78
+  lat  = 39.45655
+  lon  = -0.34006
 
   [[flightpath.waypoints]]
-  zoom = 15.33
-  lat  = 39.457774
-  lon  = -0.321251
-
-  [[flightpath.waypoints]]
-  zoom = 16.13
-  lat  = 39.458788
-  lon  = -0.325261
+  zoom = 14.19
+  lat  = 39.4569
+  lon  = -0.33795
 
 # ---------------------------------------------------------------------------
 # brussels — zoom-in over Brussels, Belgium
@@ -273,19 +269,19 @@ name   = "new_york"
 output = "images/flythrough_new_york.mp4"
 
   [[flightpath.waypoints]]
-  zoom = 2.85
-  lat  = 51.94
-  lon  = -83.19
+  zoom = 2.65
+  lat  = 45.05
+  lon  = -98.1
 
   [[flightpath.waypoints]]
-  zoom = 3.36
-  lat  = 48.62
-  lon  = -80.95
+  zoom = 3.26
+  lat  = 51.84
+  lon  = -92.05
 
   [[flightpath.waypoints]]
-  zoom = 4.31
-  lat  = 42.69
-  lon  = -68.83
+  zoom = 4.25
+  lat  = 45.47
+  lon  = -81.94
 
   [[flightpath.waypoints]]
   zoom = 5.14

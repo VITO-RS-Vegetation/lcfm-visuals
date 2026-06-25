@@ -55,6 +55,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-headless", action="store_true", help="Show browser window.")
     p.add_argument("--tile-timeout", type=int, default=30,
                    help="Max seconds to wait for tiles per frame (default: 30).")
+    p.add_argument("--test-frame", action="store_true",
+                   help="Capture only the first waypoint as a PNG and exit.")
     return p.parse_args()
 
 
@@ -153,6 +155,37 @@ def capture_frame(page, tile_timeout: int, settle_s: float = 1.5) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
+# Star field compositing (Python-side)
+# ---------------------------------------------------------------------------
+
+STARS_IMAGE = Path("images/stars_background_chatgpt.png")
+
+
+def load_stars(width: int, height: int) -> np.ndarray:
+    """Return an (H, W, 3) uint8 array loaded from STARS_IMAGE, resized to fit."""
+    img = Image.open(STARS_IMAGE).convert("RGB")
+    if img.size != (width, height):
+        img = img.resize((width, height), Image.LANCZOS)
+    return np.array(img)
+
+
+def composite_stars(
+    frame: np.ndarray, stars: np.ndarray, threshold: int = 15
+) -> np.ndarray:
+    """Blend *stars* into the space (near-black) pixels of *frame*.
+
+    Pixels where max(R,G,B) < threshold are considered empty space and get
+    replaced by the corresponding star pixel.  The atmosphere halo pixels
+    (horizon-color '#1a3060' = max≈96) are well above the threshold and are
+    left untouched.
+    """
+    mask = frame.max(axis=2) < threshold          # True where space/black
+    out = frame.copy()
+    out[mask] = stars[mask]
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -186,6 +219,9 @@ def main() -> None:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Load star background image once (resized to output dimensions)
+    stars = load_stars(width, height)
+
     # Start HTTP server rooted at the workspace root (parent of configs/)
     workspace_root = config_path.parent.parent
     server, port = start_http_server(workspace_root)
@@ -215,6 +251,22 @@ def main() -> None:
         # Let initial tiles settle
         time.sleep(2)
 
+        if args.test_frame:
+            page.evaluate(
+                "([z, ln, lt]) => window.map.jumpTo({zoom: z, center: [ln, lt]})",
+                [waypoints[0]["zoom"], waypoints[0]["lon"], waypoints[0]["lat"]],
+            )
+            img = capture_frame(page, args.tile_timeout)
+            if img.size != (width, height):
+                img = img.resize((width, height), Image.LANCZOS)
+            frame_np = composite_stars(np.array(img), stars)
+            test_path = output_path.with_suffix(".test_frame.png")
+            Image.fromarray(frame_np).save(test_path)
+            print(f"[recorder] Test frame saved: {test_path}")
+            browser.close()
+            server.shutdown()
+            return
+
         def capture_at(wp: dict) -> np.ndarray:
             """Jump to a waypoint, capture, and return a downscaled numpy frame."""
             page.evaluate(
@@ -224,7 +276,7 @@ def main() -> None:
             img = capture_frame(page, args.tile_timeout)
             if img.size != (width, height):
                 img = img.resize((width, height), Image.LANCZOS)
-            return np.array(img)
+            return composite_stars(np.array(img), stars)
 
         # ── Pre-roll: static hold on first waypoint ──
         if pre_frames > 0:
@@ -261,7 +313,7 @@ def main() -> None:
                 # Downscale from the 2× physical canvas back to output size
                 if img.size != (width, height):
                     img = img.resize((width, height), Image.LANCZOS)
-                all_frames.append(np.array(img))
+                all_frames.append(composite_stars(np.array(img), stars))
 
                 if (i + 1) % 10 == 0 or i == n_frames - 1:
                     done = sum(segment_frames[:seg_idx]) + i + 1
