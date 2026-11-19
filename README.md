@@ -104,11 +104,11 @@ into the imagery; a mild limb darkening, star background and atmosphere glow
 add depth.  All settings live in [`configs/rotating_globe.toml`](configs/rotating_globe.toml).
 
 ```bash
-# All renders in the config (1, 0.5 and 0.6 turns per year) → images/rotating_globe_lcm10_2020_2024*.mp4
+# Both renders in the config (0.4 turns per year) → images/rotating_globe_lcm10_2020_2024_2turns*.mp4
 uv run python scripts/rotating_globe.py --config configs/rotating_globe.toml
 
-# Fast check: one turn centred on the 2020 → 2021 change (~45 s) → *_transition.mp4
-uv run python scripts/rotating_globe.py --name lcm10_2020_2024 --only-transition
+# Fast check: one turn centred on the 2020 → 2021 change → *_transition.mp4
+uv run python scripts/rotating_globe.py --name lcm10_2020_2024_2turns --only-transition
 ```
 
 `turns_per_year` decouples year changes from the rotation: `0.4` gives 2 whole

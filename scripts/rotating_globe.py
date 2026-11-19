@@ -16,7 +16,7 @@ Run (all renders in the config):
     uv run python scripts/rotating_globe.py --config configs/rotating_globe.toml
 
 Fast iteration — one 360° turn centred on the first year change:
-    uv run python scripts/rotating_globe.py --name lcm10_2020_2024 --only-transition
+    uv run python scripts/rotating_globe.py --name lcm10_2020_2024_2turns --only-transition
 """
 
 from __future__ import annotations

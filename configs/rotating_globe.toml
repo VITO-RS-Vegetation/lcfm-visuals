@@ -1,7 +1,7 @@
 # Rendering configuration for rotating_globe.py (multi-annual LCM-10 globe).
 #
 # Run:          uv run python scripts/rotating_globe.py --config configs/rotating_globe.toml
-# Fast preview: add  --name lcm10_2020_2024 --only-transition
+# Fast preview: add  --name lcm10_2020_2024_2turns --only-transition
 #
 # Settings in [global] apply to every [[render]] entry and can be overridden
 # per entry.  Unknown keys raise an error (catches typos).
