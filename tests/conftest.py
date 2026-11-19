@@ -1,8 +1,9 @@
-"""Pytest configuration for orthographic_globe tests.
+"""Pytest configuration for the script tests.
 
 Adds scripts/ to sys.path and pre-mocks heavy rendering dependencies
-(cartopy, matplotlib, numpy, rasterio) so the pure-Python helper functions
-can be imported and tested without those packages being installed.
+(cartopy, matplotlib, rasterio, pyvista, imageio) so the pure-Python
+helper functions can be imported and tested without those packages being installed.
+NumPy and Pillow stay real for satellite geometry and compositing tests.
 """
 from __future__ import annotations
 
@@ -16,20 +17,15 @@ from unittest.mock import MagicMock
 # in environments that don't have cartopy / matplotlib / rasterio installed.
 # ---------------------------------------------------------------------------
 
-# numpy needs special treatment: pytest.approx calls isinstance(val, np.bool_)
-# so np.bool_ must be a real type (not a MagicMock) to avoid TypeError.
-_numpy_mock = MagicMock()
-_numpy_mock.bool_    = bool
-_numpy_mock.floating = float
-sys.modules["numpy"] = _numpy_mock
-
 _MOCKED_MODULES = [
     "cartopy",
     "cartopy.crs",
     "cartopy.feature",
+    "imageio",
     "matplotlib",
     "matplotlib.path",
     "matplotlib.pyplot",
+    "pyvista",
     "rasterio",
     "rasterio.enums",
     "rasterio.windows",
