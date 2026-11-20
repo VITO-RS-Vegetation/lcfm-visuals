@@ -53,6 +53,12 @@ Test on: `images\1_globe_europe_icon.png`
 
 Only run the full render once the icon looks correct.
 
+For the multi-annual rotating globe video, iterate on a single turn around the first year change (~45 s instead of ~4 min):
+
+```bash
+uv run python scripts/rotating_globe.py --name lcm10_2020_2024_2turns --only-transition
+```
+
 ---
 
 ## Plans folder (`plans/`)

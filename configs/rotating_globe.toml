@@ -1,0 +1,54 @@
+# Rendering configuration for rotating_globe.py (multi-annual LCM-10 globe).
+#
+# Run:          uv run python scripts/rotating_globe.py --config configs/rotating_globe.toml
+# Fast preview: add  --name lcm10_2020_2024_2turns --only-transition
+#
+# Settings in [global] apply to every [[render]] entry and can be overridden
+# per entry.  Unknown keys raise an error (catches typos).
+
+[global]
+# {year} is replaced by each entry of `years`.  Swap 8000x4000 → 4000x2000
+# for faster loading; 8k keeps detail sharp up to ~1080 px output.
+input_pattern     = "input/LCFM_LCM-10_V200_{year}_GLOBAL_RELIEF_MULTISCALE_8000x4000_NASA.png"
+years             = [2020, 2021, 2022, 2023, 2024]
+
+window_size       = 1080     # square output, px (multiple of 8)
+fps               = 30
+rotation_s        = 15.0     # duration of one full 360° turn
+turns_per_year    = 1.0      # turns between year changes; 0.4 → 2 turns for 5 years, 0.6 → 3 turns
+crossfade_s       = 1.0      # centred on each year boundary; rotation continues
+loop              = true     # last year fades back into the first (seamless if total turns is whole)
+
+tilt_deg          = 23.44    # north pole tipped toward the viewer
+start_lon         = 15.0     # longitude facing the camera at frame 0
+camera_distance   = 5.0      # in globe radii; larger = smaller globe
+sphere_resolution = 180
+
+# Relief is baked into the imagery → globe is rendered unlit.
+# limb_darkening adds rotation-independent depth (0 = flat).
+limb_darkening    = 0.25
+background_image  = "images/stars_background_chatgpt.png"  # "" = flat colour
+background_color  = [4, 6, 16]
+atmosphere_glow   = 0.5      # 0 = off
+
+title             = "LCM-10 land cover"
+show_labels       = true
+gif               = false    # also write a half-size, half-fps GIF
+crf               = 20       # x264 quality: 18 ≈ 42 MB, 20 ≈ 31 MB, 23 ≈ 20 MB for 75 s
+
+# 0.4 turn (144°) per year: 5 years = 2 whole turns (30 s) → seamless loop.
+[[render]]
+name           = "lcm10_2020_2024_2turns"
+output         = "images/rotating_globe_lcm10_2020_2024_2turns.mp4"
+turns_per_year = 0.4
+
+[[render]]
+name           = "lcm10_2020_2024_2turns_multidirectional"
+output         = "images/rotating_globe_lcm10_2020_2024_2turns_multidirectional.mp4"
+input_pattern  = "input/LCFM_LCM-10_V200_{year}_GLOBAL_RELIEF_MULTISCALE_MULTIDIRECTIONAL_8000x4000_NASA.png"
+turns_per_year = 0.4
+satellites     = true        # unlabelled Sentinel-2A + 2B, 180 degrees apart; no orbit ring
+orbits_per_turn = 2.0        # stylised speed; whole orbits preserve the seamless loop
+show_swath     = true        # set false for a satellite-only version
+swath_trail_s  = 2.0         # fading 290 km surface strip; illustrative, not actual coverage
+satellite_size_px = 52       # on-screen model length incl. solar wing; enlarged, orbit stays at 786 km

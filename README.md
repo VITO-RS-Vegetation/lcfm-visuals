@@ -91,13 +91,51 @@ GDAL_HTTP_UNSAFESSL=YES python scripts/orthographic_globe.py
 
 ---
 
-### `scripts/rotating_globe.py` — rotating globe animation (GIF + MP4)
+### `scripts/rotating_globe.py` — multi-annual rotating globe (MP4)
 
-Renders a full-rotation animation of the LCM-10 land cover layer draped on a
-sphere using PyVista.  Outputs `globe_rotation_fps<N>.gif` and `.mp4`.
+Renders the annual LCM-10 maps (2020–2024) on a rotating PyVista globe.  The
+globe makes one full 360° turn per year, then crossfades to the next year
+without pausing the rotation; 2024 fades back into 2020 so the video loops
+seamlessly.  It shows a large year label and a 2020–2024 timeline.
+
+Textures are the precomputed DEM-shaded PNGs in `input/` (8000×4000 by
+default).  The globe is rendered unlit because the relief is already baked
+into the imagery; a mild limb darkening, star background and atmosphere glow
+add depth.  All settings live in [`configs/rotating_globe.toml`](configs/rotating_globe.toml).
 
 ```bash
-uv run python scripts/rotating_globe.py
+# Both renders in the config (0.4 turns per year) → images/rotating_globe_lcm10_2020_2024_2turns*.mp4
+uv run python scripts/rotating_globe.py --config configs/rotating_globe.toml
+
+# Fast check: one turn centred on the 2020 → 2021 change → *_transition.mp4
+uv run python scripts/rotating_globe.py --name lcm10_2020_2024_2turns --only-transition
+```
+
+`turns_per_year` decouples year changes from the rotation: `0.4` gives 2 whole
+turns for 5 years (30 s, preferred), `0.6` gives 3 turns; both loop seamlessly.
+`0.5` gives 2.5 turns, which can't loop (`loop = false`).
+
+The multidirectional render also enables two unlabelled Sentinel-2A/B
+satellites, 180 degrees apart, with no orbit ring. Each is a simplified 3-D
+model (gold-foil bus, nadir-pointing MSI instrument, three-panel solar wing)
+that is lit, projected through the globe camera and rasterised in the 2-D
+compositing step, so it is hidden pixel-exactly when it passes behind Earth.
+The orbit uses the nominal 786 km altitude, 98.62 degree inclination and
+10:30 local time at the descending node (with the Sun assumed behind the
+viewer, so the southbound equator crossing is 22.5 degrees west of the disc
+centre), but
+the models are enlarged and `orbits_per_turn = 2.0` deliberately slows the
+motion. This is illustrative, not an ephemeris or acquisition/coverage
+simulation (swaths include oceans).
+The 290 km swaths fade over `swath_trail_s = 2.0` seconds and move with the
+Earth after each pass. Set `show_swath = false` for satellites alone, or
+`satellites = false` to restore the original globe. `satellite_size_px`
+is the on-screen length of the model including its solar wing. Whole Earth
+turns and whole satellite orbits are both needed for a seamless loop,
+including the trails.
+
+```bash
+uv run python scripts/rotating_globe.py --name lcm10_2020_2024_2turns_multidirectional
 ```
 
 ---
